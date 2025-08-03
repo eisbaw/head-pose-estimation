@@ -71,6 +71,40 @@ class PoseEstimator:
             useExtrinsicGuess=True)
 
         return (rotation_vector, translation_vector)
+    
+    def get_euler_angles(self, rotation_vector):
+        """Convert rotation vector to Euler angles (pitch, yaw, roll) in degrees.
+        
+        Args:
+            rotation_vector: The rotation vector from solvePnP
+            
+        Returns:
+            Tuple: (pitch, yaw, roll) in degrees
+        """
+        # Convert rotation vector to rotation matrix
+        rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+        
+        # Extract Euler angles from rotation matrix
+        # Using the convention: R = Rz(yaw) * Ry(pitch) * Rx(roll)
+        sy = np.sqrt(rotation_matrix[0, 0] ** 2 + rotation_matrix[1, 0] ** 2)
+        
+        singular = sy < 1e-6
+        
+        if not singular:
+            x = np.arctan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
+            y = np.arctan2(-rotation_matrix[2, 0], sy)
+            z = np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
+        else:
+            x = np.arctan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
+            y = np.arctan2(-rotation_matrix[2, 0], sy)
+            z = 0
+        
+        # Convert from radians to degrees
+        pitch = np.degrees(x)
+        yaw = np.degrees(y)
+        roll = np.degrees(z)
+        
+        return pitch, yaw, roll
 
     def visualize(self, image, pose, color=(255, 255, 255), line_width=2):
         """Draw a 3D box as annotation of pose"""

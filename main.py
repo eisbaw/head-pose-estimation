@@ -23,6 +23,8 @@ parser.add_argument("--video", type=str, default=None,
                     help="Video file to be processed.")
 parser.add_argument("--cam", type=int, default=0,
                     help="The webcam index.")
+parser.add_argument("--brightness", type=float, default=0,
+                    help="Brightness adjustment value (0 to disable, typical: 30)")
 args = parser.parse_args()
 
 
@@ -66,9 +68,9 @@ def run():
         if video_src == 0:
             frame = cv2.flip(frame, 2)
         
-        # Increase brightness if the image is too dark
-        # You can adjust the beta value (0-100) for brightness
-        frame = cv2.convertScaleAbs(frame, alpha=1.2, beta=30)
+        # Apply brightness adjustment if requested
+        if args.brightness > 0:
+            frame = cv2.convertScaleAbs(frame, alpha=1.2, beta=args.brightness)
 
         # Step 1: Get faces from current frame.
         faces, _ = face_detector.detect(frame, 0.7)
@@ -94,6 +96,16 @@ def run():
 
             # Step 3: Try pose estimation with 68 points.
             pose = pose_estimator.solve(marks)
+            
+            # Get Euler angles and print them
+            if pose is not None:
+                try:
+                    rotation_vector, translation_vector = pose
+                    pitch, yaw, roll = pose_estimator.get_euler_angles(rotation_vector)
+                    print(f"pitch: {pitch:.2f}, yaw: {yaw:.2f}, roll: {roll:.2f}")
+                except (ValueError, TypeError) as e:
+                    print(f"Error extracting pose data: {e}")
+                    continue
 
             tm.stop()
 
