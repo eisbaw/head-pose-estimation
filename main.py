@@ -17,6 +17,7 @@ from face_detection import FaceDetector
 from mark_detection import MarkDetector
 from pose_estimation import PoseEstimator
 from utils import refine
+from cursor_filters import create_cursor_filter, CursorFilter
 
 # Parse arguments from user input.
 parser = ArgumentParser()
@@ -26,6 +27,9 @@ parser.add_argument("--cam", type=int, default=0,
                     help="The webcam index.")
 parser.add_argument("--brightness", type=float, default=0,
                     help="Brightness adjustment value (0 to disable, typical: 30)")
+parser.add_argument("--cursor-filter", type=str, default="all",
+                    choices=["none", "kalman", "moving_average", "fir", "median", "exponential", "exp", "all"],
+                    help="Filter type for cursor smoothing (use 'all' to show all filters)")
 args = parser.parse_args()
 
 
@@ -53,8 +57,9 @@ def map_angles_to_cursor(pitch, yaw, window_width=800, window_height=600):
     yaw = max(-20, min(20, yaw))
     
     # Linear mapping: -20 degrees = 0, 0 degrees = center, 20 degrees = max
+    # Note: Y is inverted because negative pitch means looking up
     x = int((yaw + 20) / 40 * window_width)
-    y = int((pitch + 20) / 40 * window_height)
+    y = int((-pitch + 20) / 40 * window_height)
     
     return x, y
 
@@ -76,6 +81,22 @@ def run():
     # Initialize cursor position at center
     cursor_x = cursor_window_width // 2
     cursor_y = cursor_window_height // 2
+    
+    # Create cursor filters
+    if args.cursor_filter == "all":
+        # Create all filters with their colors
+        filters = {
+            "none": {"filter": create_cursor_filter("none"), "color": (255, 255, 255), "pos": (cursor_x, cursor_y)},  # White
+            "kalman": {"filter": create_cursor_filter("kalman"), "color": (0, 255, 0), "pos": (cursor_x, cursor_y)},  # Green
+            "median": {"filter": create_cursor_filter("median"), "color": (255, 0, 0), "pos": (cursor_x, cursor_y)},  # Blue
+            "moving_avg": {"filter": create_cursor_filter("moving_average"), "color": (0, 255, 255), "pos": (cursor_x, cursor_y)},  # Yellow
+            "exponential": {"filter": create_cursor_filter("exponential"), "color": (255, 0, 255), "pos": (cursor_x, cursor_y)},  # Magenta
+        }
+        print("Showing all cursor filters for comparison")
+    else:
+        # Single filter mode
+        cursor_filter = create_cursor_filter(args.cursor_filter)
+        print(f"Using cursor filter: {args.cursor_filter}")
 
     # Get the frame size. This will be used by the following detectors.
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -142,7 +163,15 @@ def run():
                     print(f"pitch: {pitch:.2f}, yaw: {yaw:.2f}, roll: {roll:.2f}")
                     
                     # Update cursor position based on pitch and yaw
-                    cursor_x, cursor_y = map_angles_to_cursor(pitch, yaw, cursor_window_width, cursor_window_height)
+                    raw_x, raw_y = map_angles_to_cursor(pitch, yaw, cursor_window_width, cursor_window_height)
+                    
+                    if args.cursor_filter == "all":
+                        # Update all filters
+                        for name, filter_data in filters.items():
+                            filter_data["pos"] = filter_data["filter"].filter(raw_x, raw_y)
+                    else:
+                        # Single filter mode
+                        cursor_x, cursor_y = cursor_filter.filter(raw_x, raw_y)
                 except (ValueError, TypeError) as e:
                     print(f"Error extracting pose data: {e}")
                     continue
@@ -179,15 +208,42 @@ def run():
         cv2.line(cursor_img, (center_x - 20, center_y), (center_x + 20, center_y), (100, 100, 100), 1)
         cv2.line(cursor_img, (center_x, center_y - 20), (center_x, center_y + 20), (100, 100, 100), 1)
         
-        # Draw cursor circle
-        cv2.circle(cursor_img, (cursor_x, cursor_y), 15, (0, 255, 0), -1)
-        cv2.circle(cursor_img, (cursor_x, cursor_y), 15, (0, 150, 0), 2)
+        # Draw cursor(s)
+        if args.cursor_filter == "all":
+            # Draw all cursors with their colors
+            for name, filter_data in filters.items():
+                x, y = filter_data["pos"]
+                color = filter_data["color"]
+                # Semi-transparent fill for overlapping cursors
+                overlay = cursor_img.copy()
+                cv2.circle(overlay, (x, y), 12, color, -1)
+                cv2.addWeighted(overlay, 0.6, cursor_img, 0.4, 0, cursor_img)
+                # Solid border
+                cv2.circle(cursor_img, (x, y), 12, color, 2)
+        else:
+            # Single cursor
+            cv2.circle(cursor_img, (cursor_x, cursor_y), 15, (0, 255, 0), -1)
+            cv2.circle(cursor_img, (cursor_x, cursor_y), 15, (0, 150, 0), 2)
         
         # Add angle text
         if 'pitch' in locals() and 'yaw' in locals():
             cv2.putText(cursor_img, f"Pitch: {pitch:.1f}", (10, 30), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
             cv2.putText(cursor_img, f"Yaw: {yaw:.1f}", (10, 60),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+        
+        # Add legend
+        if args.cursor_filter == "all":
+            # Draw legend at bottom
+            legend_y = cursor_window_height - 30
+            legend_x = 10
+            for i, (name, filter_data) in enumerate(filters.items()):
+                color = filter_data["color"]
+                text_x = legend_x + i * 140
+                cv2.putText(cursor_img, name, (text_x, legend_y), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+        else:
+            cv2.putText(cursor_img, f"Filter: {args.cursor_filter}", (10, 90),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
         
         # Show windows
