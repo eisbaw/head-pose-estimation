@@ -65,6 +65,10 @@ def run():
         # If the frame comes from webcam, flip it so it looks like a mirror.
         if video_src == 0:
             frame = cv2.flip(frame, 2)
+        
+        # Increase brightness if the image is too dark
+        # You can adjust the beta value (0-100) for brightness
+        frame = cv2.convertScaleAbs(frame, alpha=1.2, beta=30)
 
         # Step 1: Get faces from current frame.
         faces, _ = face_detector.detect(frame, 0.7)
