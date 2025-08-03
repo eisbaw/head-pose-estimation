@@ -162,6 +162,69 @@ class ExponentialFilter(CursorFilter):
         return smooth_x, smooth_y
 
 
+class SecondOrderLowPassFilter(CursorFilter):
+    """Second-order Butterworth low-pass filter for aggressive jitter removal."""
+    
+    def __init__(self, cutoff_freq=2.0, sample_rate=30.0):
+        self.cutoff_freq = cutoff_freq
+        self.sample_rate = sample_rate
+        
+        # Calculate filter coefficients for 2nd order Butterworth
+        omega = 2 * np.pi * cutoff_freq
+        omega_d = omega / sample_rate
+        k = omega_d / np.tan(omega_d / 2)
+        q = np.sqrt(2)  # Butterworth Q factor
+        
+        # Bilinear transform coefficients
+        norm = k * k + k / q + 1
+        self.b0 = 1 / norm
+        self.b1 = 2 * self.b0
+        self.b2 = self.b0
+        self.a1 = 2 * (1 - k * k) / norm
+        self.a2 = (k * k - k / q + 1) / norm
+        
+        # Initialize state variables
+        self.x1 = self.x2 = 0
+        self.y1 = self.y2 = 0
+        self.x1_y = self.x2_y = 0
+        self.y1_y = self.y2_y = 0
+        self.initialized = False
+        super().__init__()
+    
+    def reset(self):
+        self.x1 = self.x2 = 0
+        self.y1 = self.y2 = 0
+        self.x1_y = self.x2_y = 0
+        self.y1_y = self.y2_y = 0
+        self.initialized = False
+    
+    def filter(self, x, y):
+        if not self.initialized:
+            # Initialize with first values
+            self.x1 = self.x2 = float(x)
+            self.y1 = self.y2 = float(x)
+            self.x1_y = self.x2_y = float(y)
+            self.y1_y = self.y2_y = float(y)
+            self.initialized = True
+            return x, y
+        
+        # Apply 2nd order filter to X coordinate
+        out_x = self.b0 * x + self.b1 * self.x1 + self.b2 * self.x2 - self.a1 * self.y1 - self.a2 * self.y2
+        self.x2 = self.x1
+        self.x1 = x
+        self.y2 = self.y1
+        self.y1 = out_x
+        
+        # Apply 2nd order filter to Y coordinate
+        out_y = self.b0 * y + self.b1 * self.x1_y + self.b2 * self.x2_y - self.a1 * self.y1_y - self.a2 * self.y2_y
+        self.x2_y = self.x1_y
+        self.x1_y = y
+        self.y2_y = self.y1_y
+        self.y1_y = out_y
+        
+        return int(out_x), int(out_y)
+
+
 class LowPassFilter(CursorFilter):
     """Simple RC low-pass filter for removing high-frequency jitter."""
     
@@ -197,6 +260,70 @@ class LowPassFilter(CursorFilter):
         return int(self.last_x), int(self.last_y)
 
 
+class HampelFilter(CursorFilter):
+    """Hampel filter for robust outlier detection and smoothing."""
+    
+    def __init__(self, window_size=7, threshold=3.0):
+        self.window_size = window_size
+        self.threshold = threshold  # Number of median absolute deviations
+        self.x_buffer = deque(maxlen=window_size)
+        self.y_buffer = deque(maxlen=window_size)
+        super().__init__()
+    
+    def reset(self):
+        self.x_buffer.clear()
+        self.y_buffer.clear()
+    
+    def filter(self, x, y):
+        # Add new values to buffers
+        self.x_buffer.append(x)
+        self.y_buffer.append(y)
+        
+        # Need at least 3 samples for Hampel filter
+        if len(self.x_buffer) < 3:
+            return x, y
+        
+        # Apply Hampel filter to X coordinate
+        x_values = np.array(list(self.x_buffer))
+        x_median = np.median(x_values)
+        x_mad = np.median(np.abs(x_values - x_median))
+        
+        # Robust standard deviation estimate
+        x_sigma = 1.4826 * x_mad
+        
+        # Check if current value is an outlier
+        if x_sigma > 0 and np.abs(x - x_median) > self.threshold * x_sigma:
+            # Replace outlier with median
+            filtered_x = x_median
+        else:
+            # Use exponential smoothing for non-outliers
+            if len(self.x_buffer) > 1:
+                filtered_x = 0.7 * x + 0.3 * x_values[-2]
+            else:
+                filtered_x = x
+        
+        # Apply Hampel filter to Y coordinate
+        y_values = np.array(list(self.y_buffer))
+        y_median = np.median(y_values)
+        y_mad = np.median(np.abs(y_values - y_median))
+        
+        # Robust standard deviation estimate
+        y_sigma = 1.4826 * y_mad
+        
+        # Check if current value is an outlier
+        if y_sigma > 0 and np.abs(y - y_median) > self.threshold * y_sigma:
+            # Replace outlier with median
+            filtered_y = y_median
+        else:
+            # Use exponential smoothing for non-outliers
+            if len(self.y_buffer) > 1:
+                filtered_y = 0.7 * y + 0.3 * y_values[-2]
+            else:
+                filtered_y = y
+        
+        return int(filtered_x), int(filtered_y)
+
+
 def create_cursor_filter(filter_type):
     """Factory function to create cursor filters."""
     filter_map = {
@@ -207,8 +334,11 @@ def create_cursor_filter(filter_type):
         'median': lambda: MedianFilter(window_size=5),
         'exponential': lambda: ExponentialFilter(alpha=0.3),
         'exp': lambda: ExponentialFilter(alpha=0.3),
-        'lowpass': lambda: LowPassFilter(cutoff_freq=5.0),
-        'low_pass': lambda: LowPassFilter(cutoff_freq=5.0),
+        'lowpass': lambda: LowPassFilter(cutoff_freq=2.0),
+        'low_pass': lambda: LowPassFilter(cutoff_freq=2.0),
+        'lowpass2': lambda: SecondOrderLowPassFilter(cutoff_freq=2.0),
+        'low_pass2': lambda: SecondOrderLowPassFilter(cutoff_freq=2.0),
+        'hampel': lambda: HampelFilter(window_size=7, threshold=3.0),
     }
     
     filter_type = filter_type.lower()

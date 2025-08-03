@@ -12,6 +12,8 @@ from argparse import ArgumentParser
 
 import cv2
 import numpy as np
+import subprocess
+import re
 
 from face_detection import FaceDetector
 from mark_detection import MarkDetector
@@ -28,13 +30,40 @@ parser.add_argument("--cam", type=int, default=0,
 parser.add_argument("--brightness", type=float, default=0,
                     help="Brightness adjustment value (0 to disable, typical: 30)")
 parser.add_argument("--cursor-filter", type=str, default="all",
-                    choices=["none", "kalman", "moving_average", "fir", "median", "exponential", "exp", "lowpass", "low_pass", "all"],
+                    choices=["none", "kalman", "moving_average", "fir", "median", "exponential", "exp", "lowpass", "low_pass", "lowpass2", "low_pass2", "hampel", "all"],
                     help="Filter type for cursor smoothing (use 'all' to show all filters)")
+parser.add_argument("--cursor", type=str, default=None,
+                    choices=["none", "kalman", "moving_average", "fir", "median", "exponential", "exp", "lowpass", "low_pass", "lowpass2", "low_pass2", "hampel"],
+                    help="Control Xorg cursor with specified filter")
 args = parser.parse_args()
 
 
 print(__doc__)
 print("OpenCV version: {}".format(cv2.__version__))
+
+
+def get_screen_resolution():
+    """Get screen resolution using xrandr."""
+    try:
+        output = subprocess.check_output(['xrandr']).decode('utf-8')
+        # Find primary display resolution
+        match = re.search(r'(\d+)x(\d+)\+\d+\+\d+', output)
+        if match:
+            width = int(match.group(1))
+            height = int(match.group(2))
+            return width, height
+    except:
+        pass
+    # Default fallback
+    return 1920, 1080
+
+
+def set_mouse_position(x, y):
+    """Set mouse position using xdotool."""
+    try:
+        subprocess.run(['xdotool', 'mousemove', str(x), str(y)], check=True)
+    except:
+        pass
 
 
 def map_angles_to_cursor(pitch, yaw, window_width=800, window_height=600):
@@ -49,17 +78,17 @@ def map_angles_to_cursor(pitch, yaw, window_width=800, window_height=600):
     Returns:
         Tuple (x, y) of cursor position in window coordinates
     """
-    # Map from -20 to 20 degrees to 0 to window dimensions
+    # Map from -10 to 10 degrees to 0 to window dimensions
     # Center is at (window_width/2, window_height/2)
     
-    # Clamp angles to -20 to 20 range
-    pitch = max(-20, min(20, pitch))
-    yaw = max(-20, min(20, yaw))
+    # Clamp angles to -10 to 10 range
+    pitch = max(-10, min(10, pitch))
+    yaw = max(-10, min(10, yaw))
     
-    # Linear mapping: -20 degrees = 0, 0 degrees = center, 20 degrees = max
+    # Linear mapping: -10 degrees = 0, 0 degrees = center, 10 degrees = max
     # Note: Y is inverted because negative pitch means looking up
-    x = int((yaw + 20) / 40 * window_width)
-    y = int((-pitch + 20) / 40 * window_height)
+    x = int((yaw + 10) / 20 * window_width)
+    y = int((-pitch + 10) / 20 * window_height)
     
     return x, y
 
@@ -70,7 +99,13 @@ def run():
     # Initialize the video source from webcam or video file.
     video_src = args.cam if args.video is None else args.video
     cap = cv2.VideoCapture(video_src)
-    print(f"Video source: {video_src}")
+    
+    # Reduce webcam buffer to minimize latency (only for webcam, not video files)
+    if args.video is None:
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        print(f"Webcam source: {video_src} (buffer size set to 1 for low latency)")
+    else:
+        print(f"Video source: {video_src}")
     
     # Create cursor window
     cursor_window_width = 800
@@ -82,6 +117,18 @@ def run():
     cursor_x = cursor_window_width // 2
     cursor_y = cursor_window_height // 2
     
+    # Check if we need to control Xorg cursor
+    xorg_cursor_control = False
+    xorg_cursor_filter = None
+    screen_width, screen_height = 1920, 1080
+    
+    if args.cursor:
+        xorg_cursor_control = True
+        xorg_cursor_filter = create_cursor_filter(args.cursor)
+        screen_width, screen_height = get_screen_resolution()
+        print(f"Controlling Xorg cursor with {args.cursor} filter")
+        print(f"Screen resolution: {screen_width}x{screen_height}")
+    
     # Create cursor filters
     if args.cursor_filter == "all":
         # Create all filters with their colors
@@ -92,6 +139,8 @@ def run():
             "moving_avg": {"filter": create_cursor_filter("moving_average"), "color": (0, 255, 255), "pos": (cursor_x, cursor_y)},  # Yellow
             "exponential": {"filter": create_cursor_filter("exponential"), "color": (255, 0, 255), "pos": (cursor_x, cursor_y)},  # Magenta
             "lowpass": {"filter": create_cursor_filter("lowpass"), "color": (0, 165, 255), "pos": (cursor_x, cursor_y)},  # Orange
+            "lowpass2": {"filter": create_cursor_filter("lowpass2"), "color": (255, 100, 100), "pos": (cursor_x, cursor_y)},  # Light Blue
+            "hampel": {"filter": create_cursor_filter("hampel"), "color": (100, 255, 100), "pos": (cursor_x, cursor_y)},  # Light Green
         }
         print("Showing all cursor filters for comparison")
     else:
@@ -173,6 +222,16 @@ def run():
                     else:
                         # Single filter mode
                         cursor_x, cursor_y = cursor_filter.filter(raw_x, raw_y)
+                    
+                    # Control Xorg cursor if enabled
+                    if xorg_cursor_control and xorg_cursor_filter:
+                        # Get filtered position from the Xorg filter
+                        xorg_x, xorg_y = xorg_cursor_filter.filter(raw_x, raw_y)
+                        # Scale from window coordinates to screen coordinates
+                        screen_x = int(xorg_x * screen_width / cursor_window_width)
+                        screen_y = int(xorg_y * screen_height / cursor_window_height)
+                        # Set mouse position
+                        set_mouse_position(screen_x, screen_y)
                 except (ValueError, TypeError) as e:
                     print(f"Error extracting pose data: {e}")
                     continue
