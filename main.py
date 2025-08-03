@@ -28,7 +28,7 @@ parser.add_argument("--cam", type=int, default=0,
 parser.add_argument("--brightness", type=float, default=0,
                     help="Brightness adjustment value (0 to disable, typical: 30)")
 parser.add_argument("--cursor-filter", type=str, default="all",
-                    choices=["none", "kalman", "moving_average", "fir", "median", "exponential", "exp", "all"],
+                    choices=["none", "kalman", "moving_average", "fir", "median", "exponential", "exp", "lowpass", "low_pass", "all"],
                     help="Filter type for cursor smoothing (use 'all' to show all filters)")
 args = parser.parse_args()
 
@@ -91,6 +91,7 @@ def run():
             "median": {"filter": create_cursor_filter("median"), "color": (255, 0, 0), "pos": (cursor_x, cursor_y)},  # Blue
             "moving_avg": {"filter": create_cursor_filter("moving_average"), "color": (0, 255, 255), "pos": (cursor_x, cursor_y)},  # Yellow
             "exponential": {"filter": create_cursor_filter("exponential"), "color": (255, 0, 255), "pos": (cursor_x, cursor_y)},  # Magenta
+            "lowpass": {"filter": create_cursor_filter("lowpass"), "color": (0, 165, 255), "pos": (cursor_x, cursor_y)},  # Orange
         }
         print("Showing all cursor filters for comparison")
     else:

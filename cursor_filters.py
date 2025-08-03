@@ -162,6 +162,41 @@ class ExponentialFilter(CursorFilter):
         return smooth_x, smooth_y
 
 
+class LowPassFilter(CursorFilter):
+    """Simple RC low-pass filter for removing high-frequency jitter."""
+    
+    def __init__(self, cutoff_freq=5.0, sample_rate=30.0):
+        self.cutoff_freq = cutoff_freq  # Cutoff frequency in Hz
+        self.sample_rate = sample_rate  # Sample rate in Hz
+        
+        # Calculate RC time constant
+        rc = 1.0 / (2.0 * np.pi * cutoff_freq)
+        dt = 1.0 / sample_rate
+        self.alpha = dt / (rc + dt)
+        
+        # Initialize state
+        self.last_x = None
+        self.last_y = None
+        super().__init__()
+    
+    def reset(self):
+        self.last_x = None
+        self.last_y = None
+    
+    def filter(self, x, y):
+        if self.last_x is None:
+            self.last_x = float(x)
+            self.last_y = float(y)
+            return x, y
+        
+        # Apply RC low-pass filter
+        # y[n] = alpha * x[n] + (1 - alpha) * y[n-1]
+        self.last_x = self.alpha * x + (1 - self.alpha) * self.last_x
+        self.last_y = self.alpha * y + (1 - self.alpha) * self.last_y
+        
+        return int(self.last_x), int(self.last_y)
+
+
 def create_cursor_filter(filter_type):
     """Factory function to create cursor filters."""
     filter_map = {
@@ -172,6 +207,8 @@ def create_cursor_filter(filter_type):
         'median': lambda: MedianFilter(window_size=5),
         'exponential': lambda: ExponentialFilter(alpha=0.3),
         'exp': lambda: ExponentialFilter(alpha=0.3),
+        'lowpass': lambda: LowPassFilter(cutoff_freq=5.0),
+        'low_pass': lambda: LowPassFilter(cutoff_freq=5.0),
     }
     
     filter_type = filter_type.lower()
