@@ -48,6 +48,9 @@ parser.add_argument("--datasource", type=str, default="pitchyaw",
 parser.add_argument("--vector", type=str, default="location",
                     choices=["location", "speed"],
                     help="Vector interpretation mode: location (direct position) or speed (velocity)")
+parser.add_argument("--inv", type=str, default="none",
+                    choices=["none", "x", "y", "xy"],
+                    help="Image inversion mode: none (default), x (mirror horizontally), y (flip vertically), xy (both)")
 args = parser.parse_args()
 
 
@@ -339,10 +342,22 @@ def run():
         frame_got, frame = cap.read()
         if frame_got is False:
             break
-
+            
         # If the frame comes from webcam, flip it so it looks like a mirror.
-        if video_src == 0:
-            frame = cv2.flip(frame, 2)
+        # Note: Default webcam behavior is to mirror (horizontal flip)
+        if video_src == 0 and args.inv == "none":
+            frame = cv2.flip(frame, 1)  # Horizontal flip for mirror effect
+            
+        # Apply image inversion based on --inv argument
+        if args.inv == "x":
+            # Flip horizontally (mirror)
+            frame = cv2.flip(frame, 1)
+        elif args.inv == "y":
+            # Flip vertically
+            frame = cv2.flip(frame, 0)
+        elif args.inv == "xy":
+            # Flip both horizontally and vertically
+            frame = cv2.flip(frame, -1)
         
         # Apply brightness adjustment if requested
         if args.brightness > 0:
