@@ -476,13 +476,23 @@ def run():
                                     filtered_dx, filtered_dy = xorg_cursor_filter.filter(dx, dy)
                                     
                                     if args.vector == "speed":
-                                        # Speed mode: interpret deltas as velocity
-                                        # Scale down for velocity (pixels per frame at 30 FPS)
-                                        velocity_scale = 0.1  # Adjustable scale factor
+                                        # Speed mode: interpret deltas as velocity with logarithmic scaling
                                         with speed_mode_lock:
                                             if is_moving:
-                                                cursor_velocity[0] = filtered_dx * velocity_scale
-                                                cursor_velocity[1] = filtered_dy * velocity_scale
+                                                # Calculate vector length
+                                                vector_length = np.sqrt(filtered_dx**2 + filtered_dy**2)
+                                                
+                                                if vector_length > 0:
+                                                    # Apply logarithmic scaling
+                                                    # log(1 + x) gives 0 at x=0 and increases smoothly
+                                                    log_length = np.log1p(vector_length * 0.1)  # Scale factor before log
+                                                    
+                                                    # Normalize the vector and apply log-scaled magnitude
+                                                    cursor_velocity[0] = (filtered_dx / vector_length) * log_length * 10  # Final scale factor
+                                                    cursor_velocity[1] = (filtered_dy / vector_length) * log_length * 10
+                                                else:
+                                                    cursor_velocity[0] = 0.0
+                                                    cursor_velocity[1] = 0.0
                                             else:
                                                 cursor_velocity[0] = 0.0
                                                 cursor_velocity[1] = 0.0
