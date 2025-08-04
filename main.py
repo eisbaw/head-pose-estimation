@@ -14,6 +14,8 @@ import cv2
 import numpy as np
 import subprocess
 import re
+import time
+import threading
 
 from face_detection import FaceDetector
 from mark_detection import MarkDetector
@@ -43,6 +45,9 @@ parser.add_argument("--cursor-relative", action="store_true",
 parser.add_argument("--datasource", type=str, default="pitchyaw",
                     choices=["pitchyaw", "normalproj"],
                     help="Data source for cursor control: pitchyaw (Euler angles) or normalproj (face normal projection)")
+parser.add_argument("--vector", type=str, default="location",
+                    choices=["location", "speed"],
+                    help="Vector interpretation mode: location (direct position) or speed (velocity)")
 args = parser.parse_args()
 
 
@@ -94,6 +99,33 @@ def move_mouse_relative(dx, dy):
         subprocess.run(['xdotool', 'mousemove_relative', '--', str(dx), str(dy)], check=True)
     except:
         pass
+
+
+def speed_mode_cursor_updater(velocity_ref, lock, stop_event):
+    """Update cursor position based on velocity at 30 FPS."""
+    update_interval = 1.0 / 30.0  # 30 FPS
+    last_time = time.time()
+    
+    while not stop_event.is_set():
+        current_time = time.time()
+        dt = current_time - last_time
+        
+        if dt >= update_interval:
+            with lock:
+                vx = velocity_ref[0]
+                vy = velocity_ref[1]
+            
+            if vx != 0 or vy != 0:
+                # Apply velocity as pixels per frame (at 30 FPS)
+                dx = int(vx)
+                dy = int(vy)
+                if dx != 0 or dy != 0:
+                    move_mouse_relative(dx, dy)
+            
+            last_time = current_time
+        
+        # Small sleep to prevent busy waiting
+        time.sleep(0.001)
 
 
 def is_windows_key_pressed():
@@ -255,8 +287,15 @@ def run():
     last_mouse_x = 0
     last_mouse_y = 0
     w_key_pressed = False
+    
+    # Speed mode variables (using lists as mutable containers)
+    cursor_velocity = [0.0, 0.0]  # [x, y] velocity
+    speed_mode_lock = threading.Lock()
+    speed_update_thread = None
+    stop_speed_thread = threading.Event()
+    
     if args.cursor_relative:
-        print("Relative cursor mode: Hold 'w' key to control cursor")
+        print(f"Relative cursor mode: Hold 'w' key to control cursor (vector mode: {args.vector})")
     
     # Create cursor filters
     if args.cursor_filter == "all":
@@ -409,12 +448,29 @@ def run():
                                 # Apply filter to the deltas
                                 filtered_dx, filtered_dy = xorg_cursor_filter.filter(dx, dy)
                                 
-                                # Move cursor relative to last position
-                                if is_moving:
-                                    move_mouse_relative(filtered_dx - last_mouse_x, filtered_dy - last_mouse_y)
-                                    last_mouse_x = filtered_dx
-                                    last_mouse_y = filtered_dy
-                            # When key not pressed, cursor doesn't move at all
+                                if args.vector == "speed":
+                                    # Speed mode: interpret deltas as velocity
+                                    # Scale down for velocity (pixels per frame at 30 FPS)
+                                    velocity_scale = 0.1  # Adjustable scale factor
+                                    with speed_mode_lock:
+                                        if is_moving:
+                                            cursor_velocity[0] = filtered_dx * velocity_scale
+                                            cursor_velocity[1] = filtered_dy * velocity_scale
+                                        else:
+                                            cursor_velocity[0] = 0.0
+                                            cursor_velocity[1] = 0.0
+                                else:
+                                    # Location mode (original behavior)
+                                    if is_moving:
+                                        move_mouse_relative(filtered_dx - last_mouse_x, filtered_dy - last_mouse_y)
+                                        last_mouse_x = filtered_dx
+                                        last_mouse_y = filtered_dy
+                            else:
+                                # When key not pressed, stop velocity in speed mode
+                                if args.vector == "speed":
+                                    with speed_mode_lock:
+                                        cursor_velocity[0] = 0.0
+                                        cursor_velocity[1] = 0.0
                         else:
                             # Absolute mode (original behavior)
                             # Get filtered position from the Xorg filter
@@ -525,6 +581,12 @@ def run():
         cv2.putText(cursor_img, f"Datasource: {args.datasource}", (10, datasource_y),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (150, 150, 150), 1)
         
+        # Add vector mode info if in relative mode
+        if args.cursor_relative:
+            vector_y = cursor_window_height - 40
+            cv2.putText(cursor_img, f"Vector mode: {args.vector}", (10, vector_y),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (150, 150, 150), 1)
+        
         # Show relative mode status if active
         if args.cursor_relative and xorg_cursor_control:
             mode_color = (0, 255, 0) if w_key_pressed else (200, 200, 200)
@@ -539,6 +601,14 @@ def run():
                 else:
                     cv2.putText(cursor_img, f"Origin: P={origin_pitch:.1f} Y={origin_yaw:.1f}", (10, 145),
                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
+                    
+                # Show velocity in speed mode
+                if args.vector == "speed":
+                    with speed_mode_lock:
+                        vel_x = cursor_velocity[0]
+                        vel_y = cursor_velocity[1]
+                    cv2.putText(cursor_img, f"Velocity: X={vel_x:.1f} Y={vel_y:.1f} px/frame", (10, 170),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 100), 1)
         
         # Show windows
         cv2.imshow("Preview", frame)
@@ -547,6 +617,10 @@ def run():
         # Handle key presses
         key = cv2.waitKey(1)
         if key == 27:  # ESC to exit
+            # Clean up speed thread if running
+            if speed_update_thread is not None:
+                stop_speed_thread.set()
+                speed_update_thread.join(timeout=1.0)
             break
         elif key == ord('w') and args.cursor_relative and xorg_cursor_control:
             # Toggle w key state and capture origin when pressed
@@ -564,8 +638,28 @@ def run():
                 last_mouse_y = 0
                 if xorg_cursor_filter:
                     xorg_cursor_filter.reset()
+                
+                # Start speed thread if in speed mode
+                if args.vector == "speed" and speed_update_thread is None:
+                    stop_speed_thread.clear()
+                    speed_update_thread = threading.Thread(
+                        target=speed_mode_cursor_updater,
+                        args=(cursor_velocity, speed_mode_lock, stop_speed_thread)
+                    )
+                    speed_update_thread.daemon = True
+                    speed_update_thread.start()
+                    print("Speed mode thread started")
             else:
                 print("'w' key released")
+                # Stop speed thread if in speed mode
+                if args.vector == "speed" and speed_update_thread is not None:
+                    stop_speed_thread.set()
+                    speed_update_thread.join(timeout=1.0)
+                    speed_update_thread = None
+                    with speed_mode_lock:
+                        cursor_velocity[0] = 0.0
+                        cursor_velocity[1] = 0.0
+                    print("Speed mode thread stopped")
 
 
 if __name__ == '__main__':
