@@ -4,6 +4,9 @@
 default:
     @just --list
 
+# Run all checks (build and test)
+check: build test lint
+
 # Set up development environment
 setup:
     uv venv
@@ -64,3 +67,50 @@ test-setup: check-models
 versions:
     python --version
     uv pip list | grep -E "(opencv|onnx|numpy)"
+
+# === Rust Commands ===
+
+# Build Rust project
+build:
+    cargo build
+
+# Build Rust project in release mode
+build-release:
+    cargo build --release
+
+# Run Rust tests
+test:
+    cargo test
+
+# Run Rust linter and formatter
+lint:
+    cargo fmt -- --check
+    cargo clippy -- -D warnings
+
+# Format Rust code
+fmt:
+    cargo fmt
+
+# Run Rust project with webcam
+run-rust cam="0":
+    cargo run -- --cam {{cam}}
+
+# Run Rust project with video file
+run-rust-video video:
+    cargo run -- --video {{video}}
+
+# Run Rust benchmarks
+bench:
+    cargo bench
+
+# Clean Rust build artifacts
+clean-rust:
+    cargo clean
+
+# Check Rust dependencies for vulnerabilities
+audit:
+    cargo audit
+
+# Update Rust dependencies
+update-rust:
+    cargo update

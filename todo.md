@@ -1,0 +1,240 @@
+# Head Pose Estimation Rust Port - Task List
+
+## Phase 1: Project Setup and Infrastructure
+
+### Week 1: Basic Setup
+- [ ] Create new Rust project with Cargo
+- [ ] Set up workspace structure with multiple crates if needed
+- [ ] Add initial dependencies to Cargo.toml
+- [ ] Create module structure matching Python architecture
+- [ ] Set up error handling with anyhow/thiserror
+- [ ] Configure logging with env_logger
+- [ ] Create build script for system dependency detection
+- [ ] Set up CI/CD pipeline (GitHub Actions)
+- [ ] Add rustfmt.toml and clippy configuration
+
+### Week 2: Core Infrastructure
+- [ ] Implement basic image type conversions (OpenCV Mat <-> ndarray)
+- [ ] Create bounding box struct and operations
+- [ ] Port `refine()` function from utils.py
+- [ ] Implement basic geometry helpers
+- [ ] Create trait for cursor filters
+- [ ] Set up ONNX Runtime initialization
+- [ ] Add configuration struct for application settings
+- [ ] Implement command-line argument parsing with clap
+
+## Phase 2: ONNX Model Integration
+
+### Week 3: Face Detection Module
+- [ ] Create FaceDetector struct
+- [ ] Implement ONNX model loading for face_detector.onnx
+- [ ] Port image preprocessing for face detection
+- [ ] Implement forward pass inference
+- [ ] Port distance2bbox function
+- [ ] Port distance2kps function
+- [ ] Implement NMS (Non-Maximum Suppression)
+- [ ] Add face detection visualization
+- [ ] Write unit tests for face detection
+
+### Week 4: Landmark Detection Module
+- [ ] Create MarkDetector struct
+- [ ] Implement ONNX model loading for face_landmarks.onnx
+- [ ] Port image preprocessing (resize, color conversion)
+- [ ] Implement batch inference support
+- [ ] Convert landmark output format
+- [ ] Add landmark visualization
+- [ ] Write unit tests for landmark detection
+
+## Phase 3: Pose Estimation
+
+### Week 5: Pose Estimation Core
+- [ ] Create PoseEstimator struct
+- [ ] Load 3D model points from assets/model.txt
+- [ ] Implement camera matrix initialization
+- [ ] Port PnP solver using OpenCV
+- [ ] Implement Euler angle extraction
+- [ ] Port pose visualization (3D box drawing)
+- [ ] Implement draw_axes functionality
+- [ ] Implement draw_normal_vector functionality
+- [ ] Add tests for pose estimation accuracy
+
+## Phase 4: Filtering System
+
+### Week 6: Basic Filters
+- [ ] Define CursorFilter trait
+- [ ] Implement NoFilter
+- [ ] Implement MovingAverageFilter
+- [ ] Implement MedianFilter
+- [ ] Implement ExponentialFilter
+- [ ] Create filter factory function
+- [ ] Add filter reset functionality
+- [ ] Write unit tests for each filter
+
+### Week 7: Advanced Filters
+- [ ] Implement KalmanFilter with nalgebra
+- [ ] Implement LowPassFilter (1st order)
+- [ ] Implement SecondOrderLowPassFilter
+- [ ] Implement HampelFilter
+- [ ] Optimize filter performance
+- [ ] Add benchmarks for filters
+- [ ] Ensure numerical accuracy matches Python
+
+## Phase 5: Application Features
+
+### Week 8: Movement Detection and Utilities
+- [ ] Create MovementDetector struct
+- [ ] Implement sliding window buffer
+- [ ] Port statistical calculations
+- [ ] Add movement detection logic
+- [ ] Implement debug statistics
+- [ ] Create utility functions for screen resolution
+- [ ] Add X11 cursor control functions
+- [ ] Implement keyboard state detection
+
+### Week 9: Video Processing Pipeline
+- [ ] Set up OpenCV VideoCapture
+- [ ] Implement frame reading loop
+- [ ] Add webcam buffer optimization
+- [ ] Implement image flipping/inversion options
+- [ ] Add brightness adjustment
+- [ ] Create frame timing/FPS counter
+- [ ] Implement graceful shutdown
+- [ ] Add video file support
+
+## Phase 6: Main Application
+
+### Week 10: Core Application Logic
+- [ ] Implement main application struct
+- [ ] Port argument parsing logic
+- [ ] Create GUI window management
+- [ ] Implement cursor position mapping (angles to pixels)
+- [ ] Implement normal vector projection mode
+- [ ] Add multiple filter visualization mode
+- [ ] Implement GUI mode selection (all/pointers/cam/none)
+- [ ] Add legend and UI text rendering
+
+### Week 11: Cursor Control Features
+- [ ] Implement absolute cursor control mode
+- [ ] Implement relative cursor control mode
+- [ ] Add 'w' key detection for relative mode
+- [ ] Implement location vector mode
+- [ ] Implement speed vector mode
+- [ ] Create cursor update thread for speed mode
+- [ ] Add movement-based cursor control
+- [ ] Test cursor control on X11
+
+## Phase 7: Testing and Optimization
+
+### Week 12: Integration and Testing
+- [ ] Create integration tests for full pipeline
+- [ ] Add performance benchmarks vs Python
+- [ ] Profile memory usage
+- [ ] Optimize hot paths
+- [ ] Add SIMD optimizations where beneficial
+- [ ] Test with various video inputs
+- [ ] Ensure filter outputs match Python within tolerance
+- [ ] Create test suite for cursor control
+
+### Week 13: Polish and Documentation
+- [ ] Write comprehensive README
+- [ ] Add inline documentation
+- [ ] Create usage examples
+- [ ] Document build instructions
+- [ ] Add troubleshooting guide
+- [ ] Create migration guide from Python
+- [ ] Package for distribution
+- [ ] Create release binaries
+
+## Phase 8: Future Enhancements (Optional)
+
+### Platform Support
+- [ ] Abstract cursor control for Wayland support
+- [ ] Add Windows support
+- [ ] Add macOS support
+- [ ] Create platform-specific builds
+
+### Performance Optimizations
+- [ ] Implement GPU acceleration for inference
+- [ ] Add multi-face tracking support
+- [ ] Optimize filter calculations with SIMD
+- [ ] Implement frame skipping for low-end hardware
+
+### Additional Features
+- [ ] Add configuration file support
+- [ ] Implement filter parameter tuning UI
+- [ ] Add recording/playback functionality
+- [ ] Create headless mode for servers
+- [ ] Add REST API for remote control
+
+## Testing Checklist
+
+### Unit Tests
+- [ ] Test each filter algorithm
+- [ ] Test pose estimation math
+- [ ] Test movement detection logic
+- [ ] Test coordinate transformations
+- [ ] Test ONNX model loading
+
+### Integration Tests
+- [ ] Test full face detection pipeline
+- [ ] Test landmark detection accuracy
+- [ ] Test pose estimation accuracy
+- [ ] Test cursor control modes
+- [ ] Test video file processing
+
+### Performance Tests
+- [ ] Benchmark vs Python implementation
+- [ ] Measure memory usage
+- [ ] Test real-time performance (30+ FPS)
+- [ ] Profile CPU usage
+- [ ] Test with different video resolutions
+
+### Compatibility Tests
+- [ ] Test with original ONNX models
+- [ ] Test all command-line arguments
+- [ ] Test filter output accuracy
+- [ ] Test on different Linux distributions
+- [ ] Test with different OpenCV versions
+
+## Dependencies to Add
+
+```toml
+[dependencies]
+opencv = { version = "0.88", features = ["opencv-4", "contrib"] }
+ort = { version = "1.16", features = ["download-binaries"] }
+nalgebra = "0.32"
+clap = { version = "4.4", features = ["derive"] }
+anyhow = "1.0"
+thiserror = "1.0"
+x11rb = "0.12"
+rayon = "1.7"
+log = "0.4"
+env_logger = "0.10"
+ndarray = "0.15"
+image = "0.24"
+tokio = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+criterion = "0.5"
+approx = "0.5"
+```
+
+## Build Requirements
+
+- [ ] Set up shell.nix with Rust toolchain
+- [ ] Add ONNX Runtime to shell.nix
+- [ ] Configure OpenCV in shell.nix
+- [ ] Create justfile with build commands
+- [ ] Add development dependencies
+- [ ] Set up pre-commit hooks
+- [ ] Configure rustfmt and clippy
+
+## Success Metrics
+
+- [ ] All unit tests passing
+- [ ] Feature parity with Python version
+- [ ] Performance equal or better than Python
+- [ ] Memory usage lower than Python
+- [ ] Single binary under 50MB
+- [ ] Startup time under 1 second
+- [ ] Maintains 30+ FPS on reference hardware
