@@ -45,13 +45,13 @@ class KalmanFilter(CursorFilter):
         self.H = np.array([[1, 0, 0, 0],  # We measure x
                           [0, 1, 0, 0]]) # We measure y
         
-        # Process noise
-        self.Q = np.eye(4) * 0.1
-        self.Q[2, 2] = 0.01  # Less noise in velocity
-        self.Q[3, 3] = 0.01
+        # Process noise - reduced to prevent overshoot
+        self.Q = np.eye(4) * 0.01
+        self.Q[2, 2] = 0.001  # Very low noise in velocity
+        self.Q[3, 3] = 0.001
         
-        # Measurement noise
-        self.R = np.eye(2) * 5
+        # Measurement noise - increased to filter more jitter
+        self.R = np.eye(2) * 50
         
         self.initialized = False
     
@@ -334,8 +334,8 @@ def create_cursor_filter(filter_type):
         'median': lambda: MedianFilter(window_size=5),
         'exponential': lambda: ExponentialFilter(alpha=0.3),
         'exp': lambda: ExponentialFilter(alpha=0.3),
-        'lowpass': lambda: LowPassFilter(cutoff_freq=2.0),
-        'low_pass': lambda: LowPassFilter(cutoff_freq=2.0),
+        'lowpass': lambda: LowPassFilter(cutoff_freq=1.0),
+        'low_pass': lambda: LowPassFilter(cutoff_freq=1.0),
         'lowpass2': lambda: SecondOrderLowPassFilter(cutoff_freq=2.0),
         'low_pass2': lambda: SecondOrderLowPassFilter(cutoff_freq=2.0),
         'hampel': lambda: HampelFilter(window_size=7, threshold=3.0),

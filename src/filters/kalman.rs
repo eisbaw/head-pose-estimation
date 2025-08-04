@@ -15,8 +15,6 @@ pub struct KalmanFilter {
     transition: Matrix4<f64>,
     // Measurement matrix
     measurement: Matrix2x4<f64>,
-    // Time step
-    dt: f64,
 }
 
 type Matrix2x4<T> = nalgebra::Matrix<T, nalgebra::U2, nalgebra::U4, nalgebra::ArrayStorage<T, 2, 4>>;
@@ -66,7 +64,6 @@ impl KalmanFilter {
             measurement_noise,
             transition,
             measurement,
-            dt,
         }
     }
     

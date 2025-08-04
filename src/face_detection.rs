@@ -4,6 +4,7 @@ use std::path::Path;
 use crate::Result;
 
 /// SCRFD Face Detector using ONNX Runtime
+#[allow(dead_code)] // Fields will be used in TODO implementation
 pub struct FaceDetector {
     session: Session,
     input_size: (i32, i32),
@@ -46,6 +47,7 @@ impl FaceDetector {
     }
     
     /// Convert distance predictions to bounding boxes
+    #[allow(dead_code)] // Will be used in detect() implementation
     fn distance_to_bbox(points: &[(f32, f32)], distances: &[f32], max_shape: Option<(i32, i32)>) -> Vec<Rect> {
         // Port of distance2bbox from Python
         let mut boxes = Vec::new();

@@ -1,0 +1,101 @@
+Demo code showing how to estimate human head pose.
+
+There are three major steps:
+1. Detect and crop the human faces in the video frame.
+2. Run facial landmark detection on the face image.
+3. Estimate the pose by solving a PnP problem.
+
+For more details, please refer to:
+https://github.com/yinguobing/head-pose-estimation
+
+OpenCV version: 4.11.0
+Webcam source: 0 (buffer size set to 1 for low latency)
+Controlling Xorg cursor with fir filter
+Screen resolution: 1920x1200
+Showing all cursor filters for comparison
+pitch: 7.68, yaw: -3.26, roll: 179.87
+pitch: 7.45, yaw: -2.87, roll: 179.79
+pitch: 6.95, yaw: -2.94, roll: -179.91
+pitch: 6.52, yaw: -3.02, roll: 179.71
+pitch: 6.65, yaw: -3.00, roll: 179.87
+pitch: 6.52, yaw: -2.95, roll: 179.98
+pitch: 6.67, yaw: -3.09, roll: 179.86
+pitch: 6.87, yaw: -3.08, roll: -179.95
+pitch: 7.09, yaw: -3.12, roll: 179.76
+pitch: 6.77, yaw: -2.77, roll: 179.61
+pitch: 6.94, yaw: -2.93, roll: 179.53
+pitch: 6.79, yaw: -3.03, roll: 179.68
+pitch: 7.37, yaw: -2.78, roll: 179.64
+pitch: 7.27, yaw: -3.31, roll: 179.93
+pitch: 6.76, yaw: -3.43, roll: 179.89
+pitch: 7.00, yaw: -3.07, roll: 179.85
+pitch: 7.36, yaw: -3.15, roll: 179.67
+pitch: 7.54, yaw: -3.50, roll: 179.83
+pitch: 7.23, yaw: -2.88, roll: 179.56
+pitch: 7.25, yaw: -3.03, roll: 179.68
+pitch: 7.16, yaw: -2.92, roll: 179.66
+pitch: 8.53, yaw: -3.58, roll: 179.77
+pitch: 7.80, yaw: -3.79, roll: 179.88
+pitch: 7.81, yaw: -4.09, roll: 179.95
+pitch: 7.87, yaw: -4.05, roll: 179.95
+pitch: 7.45, yaw: -4.13, roll: 179.98
+pitch: 7.21, yaw: -4.16, roll: 179.93
+pitch: 7.21, yaw: -4.68, roll: 179.99
+pitch: 6.65, yaw: -4.11, roll: 179.76
+pitch: 6.63, yaw: -4.44, roll: 179.88
+pitch: 7.41, yaw: -4.37, roll: 179.89
+pitch: 7.28, yaw: -4.45, roll: 179.96
+pitch: 6.86, yaw: -3.88, roll: 179.71
+pitch: 7.07, yaw: -4.03, roll: 179.77
+pitch: 7.33, yaw: -3.70, roll: 179.78
+pitch: 7.46, yaw: -4.21, roll: 179.67
+pitch: 7.07, yaw: -3.61, roll: 179.80
+pitch: 6.82, yaw: -3.90, roll: 179.99
+pitch: 6.91, yaw: -3.76, roll: 179.86
+pitch: 6.63, yaw: -3.94, roll: 179.68
+pitch: 6.58, yaw: -3.89, roll: 179.82
+pitch: 6.20, yaw: -4.25, roll: 179.82
+pitch: 6.12, yaw: -4.14, roll: 179.79
+pitch: 6.02, yaw: -4.15, roll: 179.72
+pitch: 6.47, yaw: -3.62, roll: 179.76
+pitch: 5.88, yaw: -4.17, roll: 179.79
+pitch: 6.31, yaw: -3.74, roll: 179.74
+pitch: 6.47, yaw: -4.05, roll: 179.74
+pitch: 6.11, yaw: -4.21, roll: 179.81
+pitch: 5.66, yaw: -4.27, roll: 179.92
+pitch: 6.06, yaw: -3.67, roll: 179.77
+pitch: 5.83, yaw: -4.21, roll: -179.99
+pitch: 5.97, yaw: -3.43, roll: 179.86
+pitch: 6.43, yaw: -3.60, roll: 179.70
+pitch: 6.82, yaw: -3.43, roll: 179.44
+pitch: 6.60, yaw: -3.43, roll: 179.38
+pitch: 7.12, yaw: -3.41, roll: 179.96
+pitch: 7.96, yaw: -3.71, roll: -179.91
+pitch: 8.25, yaw: -3.87, roll: -179.62
+pitch: 8.29, yaw: -3.70, roll: -179.75
+pitch: 8.28, yaw: -3.44, roll: -179.85
+pitch: 8.04, yaw: -3.25, roll: -179.82
+pitch: 7.76, yaw: -3.05, roll: 179.93
+pitch: 6.98, yaw: -3.52, roll: 179.65
+pitch: 6.38, yaw: -3.38, roll: 179.44
+pitch: 6.52, yaw: -3.59, roll: 179.47
+pitch: 5.72, yaw: -3.79, roll: 179.48
+pitch: 6.32, yaw: -3.22, roll: 179.91
+pitch: 6.34, yaw: -3.29, roll: 179.72
+pitch: 6.00, yaw: -3.26, roll: 179.79
+pitch: 6.09, yaw: -3.12, roll: 179.95
+pitch: 6.71, yaw: -3.59, roll: -179.69
+pitch: 6.79, yaw: -3.60, roll: -179.62
+pitch: 6.77, yaw: -3.12, roll: -179.78
+pitch: 7.29, yaw: -3.74, roll: -179.65
+pitch: 7.20, yaw: -3.75, roll: -179.59
+pitch: 7.41, yaw: -3.39, roll: -179.59
+pitch: 7.03, yaw: -3.52, roll: -179.47
+pitch: 6.84, yaw: -4.08, roll: -179.42
+pitch: 6.52, yaw: -3.63, roll: -179.65
+pitch: 7.13, yaw: -3.55, roll: -179.94
+pitch: 7.24, yaw: -3.63, roll: -179.82
+pitch: 7.21, yaw: -3.70, roll: -179.84
+pitch: 7.17, yaw: -3.47, roll: -179.91
+pitch: 7.10, yaw: -3.31, roll: -179.93
+pitch: 7.29, yaw: -3.23, roll: -179.92

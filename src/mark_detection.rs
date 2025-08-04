@@ -4,6 +4,7 @@ use std::path::Path;
 use crate::Result;
 
 /// Facial landmark detector using ONNX Runtime
+#[allow(dead_code)] // Fields will be used in TODO implementation
 pub struct MarkDetector {
     session: Session,
     input_size: (i32, i32),

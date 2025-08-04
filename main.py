@@ -134,27 +134,13 @@ def speed_mode_cursor_updater(velocity_ref, lock, stop_event):
         time.sleep(0.001)
 
 
-def is_windows_key_pressed():
-    """Check if Windows/Super key is currently pressed."""
+def is_key_pressed(key_name):
+    """Check if a specific key is currently pressed using xdotool."""
     try:
-        # Use xdotool to get the state of modifier keys
-        result = subprocess.run(['xdotool', 'getactivewindow', 'getwindowpid'], 
-                              capture_output=True, text=True)
-        # Check if Super_L or Super_R is pressed using xinput
-        result = subprocess.run(['xinput', 'query-state', 'keyboard'], 
+        # Use xdotool to check key state
+        result = subprocess.run(['xdotool', 'keystate', '--clearmodifiers', key_name],
                               capture_output=True, text=True, stderr=subprocess.DEVNULL)
-        if 'Super' in result.stdout:
-            return True
-    except:
-        pass
-    
-    # Alternative method using xdotool keystate (requires xdotool 3.20160805.1 or newer)
-    try:
-        for key in ['Super_L', 'Super_R', 'Super', 'Meta_L', 'Meta_R']:
-            result = subprocess.run(['xdotool', 'keystate', '--clearmodifiers', key],
-                                  capture_output=True, text=True)
-            if result.returncode == 0:
-                return True
+        return result.returncode == 0
     except:
         pass
     return False
@@ -293,6 +279,7 @@ def run():
     last_mouse_x = 0
     last_mouse_y = 0
     w_key_pressed = False
+    w_key_was_pressed = False  # Track previous state for edge detection
     
     # Speed mode variables (using lists as mutable containers)
     cursor_velocity = [0.0, 0.0]  # [x, y] velocity
@@ -301,7 +288,7 @@ def run():
     stop_speed_thread = threading.Event()
     
     if args.cursor_relative:
-        print(f"Relative cursor mode: Hold 'w' key to control cursor (vector mode: {args.vector})")
+        print(f"Relative cursor mode: Hold 'w' key to move cursor (vector mode: {args.vector})")
         
     # Print GUI mode
     if args.gui == "none":
@@ -444,9 +431,51 @@ def run():
                         
                         # Check for 'w' key state in relative mode
                         if args.cursor_relative and xorg_cursor_control:
-                            # Unfortunately cv2.waitKey only detects key press events, not hold state
-                            # For now, we'll use a toggle approach with 'w' key
-                            pass  # Key handling is done at the end of the loop
+                            # Check the current state of the 'w' key
+                            w_key_pressed = is_key_pressed('w')
+                            
+                            # Detect key press edge (transition from not pressed to pressed)
+                            if w_key_pressed and not w_key_was_pressed:
+                                # Key was just pressed, capture origin
+                                if args.datasource == "normalproj" and 'normal_x' in locals():
+                                    origin_normal_x = normal_x
+                                    origin_normal_y = normal_y
+                                    print(f"'w' key pressed. Origin: normal_x={origin_normal_x:.3f}, normal_y={origin_normal_y:.3f}")
+                                elif 'pitch' in locals() and 'yaw' in locals():
+                                    origin_pitch = pitch
+                                    origin_yaw = yaw
+                                    print(f"'w' key pressed. Origin: pitch={origin_pitch:.1f}, yaw={origin_yaw:.1f}")
+                                last_mouse_x = 0
+                                last_mouse_y = 0
+                                if xorg_cursor_filter:
+                                    xorg_cursor_filter.reset()
+                                
+                                # Start speed thread if in speed mode
+                                if args.vector == "speed" and speed_update_thread is None:
+                                    stop_speed_thread.clear()
+                                    speed_update_thread = threading.Thread(
+                                        target=speed_mode_cursor_updater,
+                                        args=(cursor_velocity, speed_mode_lock, stop_speed_thread)
+                                    )
+                                    speed_update_thread.daemon = True
+                                    speed_update_thread.start()
+                                    print("Speed mode thread started")
+                            
+                            # Detect key release edge (transition from pressed to not pressed)
+                            elif not w_key_pressed and w_key_was_pressed:
+                                print("'w' key released")
+                                # Stop speed thread if in speed mode
+                                if args.vector == "speed" and speed_update_thread is not None:
+                                    stop_speed_thread.set()
+                                    speed_update_thread.join(timeout=1.0)
+                                    speed_update_thread = None
+                                    with speed_mode_lock:
+                                        cursor_velocity[0] = 0.0
+                                        cursor_velocity[1] = 0.0
+                                    print("Speed mode thread stopped")
+                            
+                            # Update previous state
+                            w_key_was_pressed = w_key_pressed
                         
                         # Control Xorg cursor if enabled
                         if xorg_cursor_control and xorg_cursor_filter:
@@ -632,7 +661,7 @@ def run():
             # Show relative mode status if active
             if args.cursor_relative and xorg_cursor_control:
                 mode_color = (0, 255, 0) if w_key_pressed else (200, 200, 200)
-                mode_text = "'w' key HELD" if w_key_pressed else "Hold 'w' key"
+                mode_text = "'w' key ACTIVE" if w_key_pressed else "Hold 'w' to move"
                 rel_mode_y = 150 if args.datasource == "normalproj" else 120
                 cv2.putText(cursor_img, f"Relative mode: {mode_text}", (10, rel_mode_y),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, mode_color, 2)
@@ -672,44 +701,6 @@ def run():
                     stop_speed_thread.set()
                     speed_update_thread.join(timeout=1.0)
                 break
-            elif key == ord('w') and args.cursor_relative and xorg_cursor_control:
-                # Toggle w key state and capture origin when pressed
-                w_key_pressed = not w_key_pressed
-                if w_key_pressed:
-                    if args.datasource == "normalproj" and 'normal_x' in locals():
-                        origin_normal_x = normal_x
-                        origin_normal_y = normal_y
-                        print(f"'w' key pressed. Origin: normal_x={origin_normal_x:.3f}, normal_y={origin_normal_y:.3f}")
-                    elif 'pitch' in locals() and 'yaw' in locals():
-                        origin_pitch = pitch
-                        origin_yaw = yaw
-                        print(f"'w' key pressed. Origin: pitch={origin_pitch:.1f}, yaw={origin_yaw:.1f}")
-                    last_mouse_x = 0
-                    last_mouse_y = 0
-                    if xorg_cursor_filter:
-                        xorg_cursor_filter.reset()
-                
-                    # Start speed thread if in speed mode
-                    if args.vector == "speed" and speed_update_thread is None:
-                        stop_speed_thread.clear()
-                        speed_update_thread = threading.Thread(
-                            target=speed_mode_cursor_updater,
-                            args=(cursor_velocity, speed_mode_lock, stop_speed_thread)
-                        )
-                        speed_update_thread.daemon = True
-                        speed_update_thread.start()
-                        print("Speed mode thread started")
-                else:
-                    print("'w' key released")
-                    # Stop speed thread if in speed mode
-                    if args.vector == "speed" and speed_update_thread is not None:
-                        stop_speed_thread.set()
-                        speed_update_thread.join(timeout=1.0)
-                        speed_update_thread = None
-                        with speed_mode_lock:
-                            cursor_velocity[0] = 0.0
-                            cursor_velocity[1] = 0.0
-                            print("Speed mode thread stopped")
     
     except KeyboardInterrupt:
         print("\nInterrupted by user")
