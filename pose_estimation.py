@@ -148,6 +148,30 @@ class PoseEstimator:
         R, t = pose
         img = cv2.drawFrameAxes(img, self.camera_matrix,
                                 self.dist_coeefs, R, t, 30)
+    
+    def draw_normal_vector(self, image, pose, color=(255, 255, 0), line_width=3):
+        """Draw the face normal vector as an arrow."""
+        rotation_vector, translation_vector = pose
+        
+        # Define points for the normal vector
+        # Start at origin (face center)
+        origin_3d = np.array([[0, 0, 0]], dtype=np.float32)
+        # Normal vector points along Z axis (0, 0, 1) in face coordinates
+        # Scale it to be visible (150 units)
+        normal_end_3d = np.array([[0, 0, 150]], dtype=np.float32)
+        
+        # Project 3D points to 2D
+        origin_2d, _ = cv2.projectPoints(origin_3d, rotation_vector, translation_vector,
+                                       self.camera_matrix, self.dist_coeefs)
+        normal_end_2d, _ = cv2.projectPoints(normal_end_3d, rotation_vector, translation_vector,
+                                           self.camera_matrix, self.dist_coeefs)
+        
+        # Convert to integer coordinates
+        origin_2d = tuple(origin_2d[0][0].astype(int))
+        normal_end_2d = tuple(normal_end_2d[0][0].astype(int))
+        
+        # Draw arrow for normal vector
+        cv2.arrowedLine(image, origin_2d, normal_end_2d, color, line_width, cv2.LINE_AA, tipLength=0.2)
 
     def show_3d_model(self):
         from matplotlib import pyplot

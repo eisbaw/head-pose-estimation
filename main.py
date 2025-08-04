@@ -20,6 +20,7 @@ from mark_detection import MarkDetector
 from pose_estimation import PoseEstimator
 from utils import refine
 from cursor_filters import create_cursor_filter, CursorFilter
+from movement_detector import MovementDetector
 
 # Parse arguments from user input.
 parser = ArgumentParser()
@@ -35,6 +36,13 @@ parser.add_argument("--cursor-filter", type=str, default="all",
 parser.add_argument("--cursor", type=str, default=None,
                     choices=["none", "kalman", "moving_average", "fir", "median", "exponential", "exp", "lowpass", "low_pass", "lowpass2", "low_pass2", "hampel"],
                     help="Control Xorg cursor with specified filter")
+parser.add_argument("--cursor-still", action="store_true",
+                    help="Only move cursor when head movement is detected")
+parser.add_argument("--cursor-relative", action="store_true",
+                    help="Use relative cursor control (hold 'w' key to activate)")
+parser.add_argument("--datasource", type=str, default="pitchyaw",
+                    choices=["pitchyaw", "normalproj"],
+                    help="Data source for cursor control: pitchyaw (Euler angles) or normalproj (face normal projection)")
 args = parser.parse_args()
 
 
@@ -64,6 +72,110 @@ def set_mouse_position(x, y):
         subprocess.run(['xdotool', 'mousemove', str(x), str(y)], check=True)
     except:
         pass
+
+
+def get_mouse_position():
+    """Get current mouse position using xdotool."""
+    try:
+        result = subprocess.run(['xdotool', 'getmouselocation'], 
+                              capture_output=True, text=True, check=True)
+        # Parse output like "x:123 y:456 screen:0 window:12345"
+        match = re.search(r'x:(\d+) y:(\d+)', result.stdout)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+    except:
+        pass
+    return None, None
+
+
+def move_mouse_relative(dx, dy):
+    """Move mouse relative to current position."""
+    try:
+        subprocess.run(['xdotool', 'mousemove_relative', '--', str(dx), str(dy)], check=True)
+    except:
+        pass
+
+
+def is_windows_key_pressed():
+    """Check if Windows/Super key is currently pressed."""
+    try:
+        # Use xdotool to get the state of modifier keys
+        result = subprocess.run(['xdotool', 'getactivewindow', 'getwindowpid'], 
+                              capture_output=True, text=True)
+        # Check if Super_L or Super_R is pressed using xinput
+        result = subprocess.run(['xinput', 'query-state', 'keyboard'], 
+                              capture_output=True, text=True, stderr=subprocess.DEVNULL)
+        if 'Super' in result.stdout:
+            return True
+    except:
+        pass
+    
+    # Alternative method using xdotool keystate (requires xdotool 3.20160805.1 or newer)
+    try:
+        for key in ['Super_L', 'Super_R', 'Super', 'Meta_L', 'Meta_R']:
+            result = subprocess.run(['xdotool', 'keystate', '--clearmodifiers', key],
+                                  capture_output=True, text=True)
+            if result.returncode == 0:
+                return True
+    except:
+        pass
+    return False
+
+
+def get_face_normal_from_rotation_matrix(rotation_matrix):
+    """Extract the face normal vector from rotation matrix.
+    
+    The face normal is the Z-axis of the rotated coordinate system,
+    which is the third column of the rotation matrix.
+    
+    Args:
+        rotation_matrix: 3x3 rotation matrix from cv2.Rodrigues
+        
+    Returns:
+        numpy array: 3D normal vector (x, y, z)
+    """
+    # The third column of rotation matrix represents the Z-axis (face normal)
+    # in the world coordinate system
+    normal = rotation_matrix[:, 2]
+    return normal
+
+
+def project_normal_to_xy(normal_vector):
+    """Project the 3D normal vector to 2D coordinates.
+    
+    Args:
+        normal_vector: 3D normal vector (x, y, z)
+        
+    Returns:
+        Tuple (x, y) representing the projection
+    """
+    # Direct projection onto X-Y plane
+    # Note: We use -x to match the yaw direction convention
+    return -normal_vector[0], -normal_vector[1]
+
+
+def map_normal_to_cursor(normal_x, normal_y, window_width=800, window_height=600):
+    """Map projected normal vector to cursor position.
+    
+    Args:
+        normal_x: X component of projected normal (-1 to 1)
+        normal_y: Y component of projected normal (-1 to 1)
+        window_width: Width of the cursor window
+        window_height: Height of the cursor window
+        
+    Returns:
+        Tuple (x, y) of cursor position in window coordinates
+    """
+    # Map from -0.5 to 0.5 range to window dimensions
+    # Clamp to reasonable range
+    normal_x = max(-0.5, min(0.5, normal_x))
+    normal_y = max(-0.5, min(0.5, normal_y))
+    
+    # Linear mapping
+    x = int((normal_x + 0.5) * window_width)
+    y = int((normal_y + 0.5) * window_height)
+    
+    return x, y
 
 
 def map_angles_to_cursor(pitch, yaw, window_width=800, window_height=600):
@@ -128,6 +240,23 @@ def run():
         screen_width, screen_height = get_screen_resolution()
         print(f"Controlling Xorg cursor with {args.cursor} filter")
         print(f"Screen resolution: {screen_width}x{screen_height}")
+        
+    # Initialize movement detector if needed
+    movement_detector = None
+    if args.cursor_still:
+        movement_detector = MovementDetector(window_size=15, std_threshold=2.0, range_threshold=5.0)
+        print("Movement detection enabled - cursor only moves when head movement detected")
+        
+    # Initialize relative cursor control
+    origin_pitch = 0.0
+    origin_yaw = 0.0
+    origin_normal_x = 0.0
+    origin_normal_y = 0.0
+    last_mouse_x = 0
+    last_mouse_y = 0
+    w_key_pressed = False
+    if args.cursor_relative:
+        print("Relative cursor mode: Hold 'w' key to control cursor")
     
     # Create cursor filters
     if args.cursor_filter == "all":
@@ -209,11 +338,27 @@ def run():
             if pose is not None:
                 try:
                     rotation_vector, translation_vector = pose
-                    pitch, yaw, roll = pose_estimator.get_euler_angles(rotation_vector)
-                    print(f"pitch: {pitch:.2f}, yaw: {yaw:.2f}, roll: {roll:.2f}")
                     
-                    # Update cursor position based on pitch and yaw
-                    raw_x, raw_y = map_angles_to_cursor(pitch, yaw, cursor_window_width, cursor_window_height)
+                    # Get rotation matrix for both modes
+                    rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+                    
+                    # Initialize variables for cursor control
+                    if args.datasource == "normalproj":
+                        # Extract face normal and project to 2D
+                        face_normal = get_face_normal_from_rotation_matrix(rotation_matrix)
+                        normal_x, normal_y = project_normal_to_xy(face_normal)
+                        raw_x, raw_y = map_normal_to_cursor(normal_x, normal_y, cursor_window_width, cursor_window_height)
+                        print(f"normal_x: {normal_x:.3f}, normal_y: {normal_y:.3f}, normal_z: {face_normal[2]:.3f}")
+                        
+                        # For movement detector, convert normal projection to approximate angles
+                        # This is a rough approximation for compatibility
+                        pitch = np.degrees(np.arcsin(-normal_y))
+                        yaw = np.degrees(np.arcsin(-normal_x))
+                    else:
+                        # Original pitch/yaw mode
+                        pitch, yaw, roll = pose_estimator.get_euler_angles(rotation_vector)
+                        print(f"pitch: {pitch:.2f}, yaw: {yaw:.2f}, roll: {roll:.2f}")
+                        raw_x, raw_y = map_angles_to_cursor(pitch, yaw, cursor_window_width, cursor_window_height)
                     
                     if args.cursor_filter == "all":
                         # Update all filters
@@ -223,15 +368,65 @@ def run():
                         # Single filter mode
                         cursor_x, cursor_y = cursor_filter.filter(raw_x, raw_y)
                     
+                    # Update movement detector if enabled
+                    is_moving = True  # Default to moving if no detector
+                    if movement_detector:
+                        is_moving = movement_detector.update(pitch, yaw)
+                        # Debug output (optional)
+                        if is_moving:
+                            print("MOVING", end=" ")
+                    
+                    # Check for 'w' key state in relative mode
+                    if args.cursor_relative and xorg_cursor_control:
+                        # Unfortunately cv2.waitKey only detects key press events, not hold state
+                        # For now, we'll use a toggle approach with 'w' key
+                        pass  # Key handling is done at the end of the loop
+                    
                     # Control Xorg cursor if enabled
                     if xorg_cursor_control and xorg_cursor_filter:
-                        # Get filtered position from the Xorg filter
-                        xorg_x, xorg_y = xorg_cursor_filter.filter(raw_x, raw_y)
-                        # Scale from window coordinates to screen coordinates
-                        screen_x = int(xorg_x * screen_width / cursor_window_width)
-                        screen_y = int(xorg_y * screen_height / cursor_window_height)
-                        # Set mouse position
-                        set_mouse_position(screen_x, screen_y)
+                        if args.cursor_relative:
+                            # Relative mode - only move when w is pressed
+                            if w_key_pressed:
+                                # Use head movement from origin as offset
+                                if args.datasource == "normalproj":
+                                    # Use normal vector deltas
+                                    delta_x = normal_x - origin_normal_x
+                                    delta_y = normal_y - origin_normal_y
+                                    # Scale factor for normal projection (adjustable)
+                                    pixel_per_unit = 2000
+                                    dx = int(delta_x * pixel_per_unit)
+                                    dy = int(delta_y * pixel_per_unit)
+                                else:
+                                    # Use pitch/yaw deltas
+                                    delta_pitch = pitch - origin_pitch
+                                    delta_yaw = yaw - origin_yaw
+                                    # Map angle deltas to pixel movements (scale factor)
+                                    # 1 degree = 50 pixels (adjustable)
+                                    pixel_per_degree = 50
+                                    dx = int(delta_yaw * pixel_per_degree)
+                                    dy = int(-delta_pitch * pixel_per_degree)  # Inverted
+                                
+                                # Apply filter to the deltas
+                                filtered_dx, filtered_dy = xorg_cursor_filter.filter(dx, dy)
+                                
+                                # Move cursor relative to last position
+                                if is_moving:
+                                    move_mouse_relative(filtered_dx - last_mouse_x, filtered_dy - last_mouse_y)
+                                    last_mouse_x = filtered_dx
+                                    last_mouse_y = filtered_dy
+                            # When key not pressed, cursor doesn't move at all
+                        else:
+                            # Absolute mode (original behavior)
+                            # Get filtered position from the Xorg filter
+                            xorg_x, xorg_y = xorg_cursor_filter.filter(raw_x, raw_y)
+                            
+                            # Only move cursor if movement detected (or detector disabled)
+                            if is_moving:
+                                # Scale from window coordinates to screen coordinates
+                                screen_x = int(xorg_x * screen_width / cursor_window_width)
+                                screen_y = int(xorg_y * screen_height / cursor_window_height)
+                                # Set mouse position
+                                set_mouse_position(screen_x, screen_y)
                 except (ValueError, TypeError) as e:
                     print(f"Error extracting pose data: {e}")
                     continue
@@ -243,6 +438,9 @@ def run():
 
             # Do you want to see the pose annotation?
             pose_estimator.visualize(frame, pose, color=(0, 255, 0))
+            
+            # Always draw the normal vector
+            pose_estimator.draw_normal_vector(frame, pose, color=(255, 255, 0))
 
             # Do you want to see the axes?
             # pose_estimator.draw_axes(frame, pose)
@@ -285,12 +483,27 @@ def run():
             cv2.circle(cursor_img, (cursor_x, cursor_y), 15, (0, 255, 0), -1)
             cv2.circle(cursor_img, (cursor_x, cursor_y), 15, (0, 150, 0), 2)
         
-        # Add angle text
-        if 'pitch' in locals() and 'yaw' in locals():
+        # Add angle or normal vector text
+        if args.datasource == "normalproj" and 'normal_x' in locals():
+            cv2.putText(cursor_img, f"Normal X: {normal_x:.3f}", (10, 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+            cv2.putText(cursor_img, f"Normal Y: {normal_y:.3f}", (10, 60),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+            cv2.putText(cursor_img, f"Normal Z: {face_normal[2]:.3f}", (10, 90),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+        elif 'pitch' in locals() and 'yaw' in locals():
             cv2.putText(cursor_img, f"Pitch: {pitch:.1f}", (10, 30), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
             cv2.putText(cursor_img, f"Yaw: {yaw:.1f}", (10, 60),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+            
+            # Show movement status if detector is active
+            if movement_detector and 'is_moving' in locals():
+                status_color = (0, 255, 0) if is_moving else (0, 100, 255)  # Green if moving, red if still
+                status_text = "MOVING" if is_moving else "STILL"
+                status_y = 120 if args.datasource == "normalproj" else 90
+                cv2.putText(cursor_img, f"Status: {status_text}", (10, status_y),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
         
         # Add legend
         if args.cursor_filter == "all":
@@ -303,14 +516,56 @@ def run():
                 cv2.putText(cursor_img, name, (text_x, legend_y), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
         else:
-            cv2.putText(cursor_img, f"Filter: {args.cursor_filter}", (10, 90),
+            filter_y = 120 if args.datasource == "normalproj" else 90
+            cv2.putText(cursor_img, f"Filter: {args.cursor_filter}", (10, filter_y),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+        
+        # Add datasource info
+        datasource_y = cursor_window_height - 60
+        cv2.putText(cursor_img, f"Datasource: {args.datasource}", (10, datasource_y),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (150, 150, 150), 1)
+        
+        # Show relative mode status if active
+        if args.cursor_relative and xorg_cursor_control:
+            mode_color = (0, 255, 0) if w_key_pressed else (200, 200, 200)
+            mode_text = "'w' key HELD" if w_key_pressed else "Hold 'w' key"
+            rel_mode_y = 150 if args.datasource == "normalproj" else 120
+            cv2.putText(cursor_img, f"Relative mode: {mode_text}", (10, rel_mode_y),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, mode_color, 2)
+            if w_key_pressed:
+                if args.datasource == "normalproj":
+                    cv2.putText(cursor_img, f"Origin: X={origin_normal_x:.3f} Y={origin_normal_y:.3f}", (10, 145),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
+                else:
+                    cv2.putText(cursor_img, f"Origin: P={origin_pitch:.1f} Y={origin_yaw:.1f}", (10, 145),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
         
         # Show windows
         cv2.imshow("Preview", frame)
         cv2.imshow("Head Pose Cursor", cursor_img)
-        if cv2.waitKey(1) == 27:
+        
+        # Handle key presses
+        key = cv2.waitKey(1)
+        if key == 27:  # ESC to exit
             break
+        elif key == ord('w') and args.cursor_relative and xorg_cursor_control:
+            # Toggle w key state and capture origin when pressed
+            w_key_pressed = not w_key_pressed
+            if w_key_pressed:
+                if args.datasource == "normalproj" and 'normal_x' in locals():
+                    origin_normal_x = normal_x
+                    origin_normal_y = normal_y
+                    print(f"'w' key pressed. Origin: normal_x={origin_normal_x:.3f}, normal_y={origin_normal_y:.3f}")
+                elif 'pitch' in locals() and 'yaw' in locals():
+                    origin_pitch = pitch
+                    origin_yaw = yaw
+                    print(f"'w' key pressed. Origin: pitch={origin_pitch:.1f}, yaw={origin_yaw:.1f}")
+                last_mouse_x = 0
+                last_mouse_y = 0
+                if xorg_cursor_filter:
+                    xorg_cursor_filter.reset()
+            else:
+                print("'w' key released")
 
 
 if __name__ == '__main__':
