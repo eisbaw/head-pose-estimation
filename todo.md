@@ -3,41 +3,41 @@
 ## Phase 1: Project Setup and Infrastructure
 
 ### Week 1: Basic Setup
-- [ ] Create new Rust project with Cargo
+- [x] DONE: Create new Rust project with Cargo
 - [ ] Set up workspace structure with multiple crates if needed
-- [ ] Add initial dependencies to Cargo.toml
-- [ ] Create module structure matching Python architecture
-- [ ] Set up error handling with anyhow/thiserror
-- [ ] Configure logging with env_logger
+- [x] DONE: Add initial dependencies to Cargo.toml
+- [x] DONE: Create module structure matching Python architecture
+- [x] DONE: Set up error handling with anyhow/thiserror
+- [x] DONE: Configure logging with env_logger
 - [ ] Create build script for system dependency detection
 - [ ] Set up CI/CD pipeline (GitHub Actions)
-- [ ] Add rustfmt.toml and clippy configuration
+- [x] DONE: Add rustfmt.toml and clippy configuration (in Cargo.toml)
 
 ### Week 2: Core Infrastructure
 - [ ] Implement basic image type conversions (OpenCV Mat <-> ndarray)
-- [ ] Create bounding box struct and operations
-- [ ] Port `refine()` function from utils.py
+- [x] DONE: Create bounding box struct and operations (using opencv::core::Rect)
+- [x] DONE: Port `refine()` function from utils.py
 - [ ] Implement basic geometry helpers
-- [ ] Create trait for cursor filters
+- [x] DONE: Create trait for cursor filters
 - [ ] Set up ONNX Runtime initialization
 - [ ] Add configuration struct for application settings
-- [ ] Implement command-line argument parsing with clap
+- [x] DONE: Implement command-line argument parsing with clap
 
 ## Phase 2: ONNX Model Integration
 
 ### Week 3: Face Detection Module
-- [ ] Create FaceDetector struct
+- [x] DONE: Create FaceDetector struct
 - [ ] Implement ONNX model loading for face_detector.onnx
 - [ ] Port image preprocessing for face detection
 - [ ] Implement forward pass inference
-- [ ] Port distance2bbox function
+- [x] DONE: Port distance2bbox function
 - [ ] Port distance2kps function
 - [ ] Implement NMS (Non-Maximum Suppression)
 - [ ] Add face detection visualization
-- [ ] Write unit tests for face detection
+- [x] DONE: Write unit tests for face detection (test_distance_to_bbox)
 
 ### Week 4: Landmark Detection Module
-- [ ] Create MarkDetector struct
+- [x] DONE: Create MarkDetector struct
 - [ ] Implement ONNX model loading for face_landmarks.onnx
 - [ ] Port image preprocessing (resize, color conversion)
 - [ ] Implement batch inference support
@@ -48,33 +48,33 @@
 ## Phase 3: Pose Estimation
 
 ### Week 5: Pose Estimation Core
-- [ ] Create PoseEstimator struct
-- [ ] Load 3D model points from assets/model.txt
-- [ ] Implement camera matrix initialization
-- [ ] Port PnP solver using OpenCV
-- [ ] Implement Euler angle extraction
+- [x] DONE: Create PoseEstimator struct
+- [x] DONE: Load 3D model points from assets/model.txt
+- [x] DONE: Implement camera matrix initialization
+- [x] DONE: Port PnP solver using OpenCV
+- [x] DONE: Implement Euler angle extraction
 - [ ] Port pose visualization (3D box drawing)
 - [ ] Implement draw_axes functionality
 - [ ] Implement draw_normal_vector functionality
-- [ ] Add tests for pose estimation accuracy
+- [x] DONE: Add tests for pose estimation accuracy (test_euler_angle_conversion)
 
 ## Phase 4: Filtering System
 
 ### Week 6: Basic Filters
-- [ ] Define CursorFilter trait
-- [ ] Implement NoFilter
-- [ ] Implement MovingAverageFilter
-- [ ] Implement MedianFilter
-- [ ] Implement ExponentialFilter
-- [ ] Create filter factory function
-- [ ] Add filter reset functionality
-- [ ] Write unit tests for each filter
+- [x] DONE: Define CursorFilter trait
+- [x] DONE: Implement NoFilter
+- [x] DONE: Implement MovingAverageFilter
+- [x] DONE: Implement MedianFilter
+- [x] DONE: Implement ExponentialFilter
+- [x] DONE: Create filter factory function
+- [x] DONE: Add filter reset functionality
+- [x] DONE: Write unit tests for each filter
 
 ### Week 7: Advanced Filters
-- [ ] Implement KalmanFilter with nalgebra
-- [ ] Implement LowPassFilter (1st order)
-- [ ] Implement SecondOrderLowPassFilter
-- [ ] Implement HampelFilter
+- [x] DONE: Implement KalmanFilter with nalgebra
+- [x] DONE: Implement LowPassFilter (1st order)
+- [x] DONE: Implement SecondOrderLowPassFilter
+- [x] DONE: Implement HampelFilter
 - [ ] Optimize filter performance
 - [ ] Add benchmarks for filters
 - [ ] Ensure numerical accuracy matches Python
@@ -82,11 +82,11 @@
 ## Phase 5: Application Features
 
 ### Week 8: Movement Detection and Utilities
-- [ ] Create MovementDetector struct
-- [ ] Implement sliding window buffer
-- [ ] Port statistical calculations
-- [ ] Add movement detection logic
-- [ ] Implement debug statistics
+- [x] DONE: Create MovementDetector struct
+- [x] DONE: Implement sliding window buffer
+- [x] DONE: Port statistical calculations
+- [x] DONE: Add movement detection logic
+- [x] DONE: Implement debug statistics
 - [ ] Create utility functions for screen resolution
 - [ ] Add X11 cursor control functions
 - [ ] Implement keyboard state detection
@@ -238,3 +238,38 @@ approx = "0.5"
 - [ ] Single binary under 50MB
 - [ ] Startup time under 1 second
 - [ ] Maintains 30+ FPS on reference hardware
+
+## Immediate Tasks (Added by MPED)
+
+### Code Quality
+- [x] DONE: Fix unsafe code warnings in pose_estimation.rs
+- [x] DONE: Fix dead code warnings (unused struct fields)
+- [x] DONE: Fix unused imports and variables warnings
+- [ ] Add missing documentation for all public items
+- [ ] Add comprehensive module-level documentation
+- [ ] Document error types and their meanings
+
+### Implementation TODOs
+- [ ] Implement ONNX model loading in FaceDetector::new
+- [ ] Implement face detection preprocessing in FaceDetector::detect
+- [ ] Implement face detection inference
+- [ ] Implement face detection postprocessing with NMS
+- [ ] Implement ONNX model loading in MarkDetector::new
+- [ ] Implement landmark detection preprocessing
+- [ ] Implement landmark detection inference
+- [ ] Port distance2kps function for face detection
+
+### Missing Core Functionality
+- [ ] Implement main application loop
+- [ ] Implement video capture from webcam
+- [ ] Implement video capture from file
+- [ ] Implement cursor control (X11)
+- [ ] Implement GUI visualization
+- [ ] Implement filter mode switching
+- [ ] Implement debug overlay
+
+### Testing
+- [ ] Add integration tests for full pipeline
+- [ ] Add performance benchmarks
+- [ ] Test with actual ONNX models
+- [ ] Test cursor control functionality
