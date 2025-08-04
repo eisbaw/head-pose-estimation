@@ -273,3 +273,41 @@ approx = "0.5"
 - [ ] Add performance benchmarks
 - [ ] Test with actual ONNX models
 - [ ] Test cursor control functionality
+
+## Code Quality Issues (Found by Clippy)
+
+### High Priority
+- [ ] Fix potential panic in KalmanFilter matrix inversion (use proper error handling)
+- [ ] Fix suspicious operation grouping in SecondOrderLowPassFilter (line 96)
+- [ ] Add proper error handling for all unwrap() calls in tests
+- [ ] Handle partial_cmp unwrap calls in sort operations
+
+### Medium Priority
+- [ ] Fix clippy lint group priorities in Cargo.toml
+- [ ] Add #[must_use] to constructors that return Self
+- [ ] Use f64::from() instead of as f64 for lossless casts
+- [ ] Use .copied() instead of .cloned() for f64 values
+- [ ] Use mul_add for better floating point accuracy
+- [ ] Add # Panics sections to functions that can panic
+
+### Low Priority
+- [ ] Make movement_detector::calculate_stats an associated function
+- [ ] Add backticks to documentation (PnP, refine())
+- [ ] Use format! with inline variables
+- [ ] Consider making placeholder detect() functions const
+- [ ] Remove redundant import in main.rs
+- [ ] Consider removing Result return from main()
+
+## Missing Tests
+
+### Unit Tests
+- [ ] Test refine_boxes edge cases (empty boxes, negative values)
+- [ ] Test filter reset functionality for all filters
+- [ ] Test MovementDetector with edge cases
+- [ ] Test PoseEstimator::parse_model_points with invalid input
+- [ ] Test error handling in all modules
+
+### Integration Tests
+- [ ] Test filter chain with multiple filters
+- [ ] Test pose estimation with real landmark data
+- [ ] Test movement detection with real pose data
