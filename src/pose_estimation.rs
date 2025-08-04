@@ -25,10 +25,8 @@ impl PoseEstimator {
         let focal_length = image_width as f64;
         let center = (image_width as f64 / 2.0, image_height as f64 / 2.0);
         
-        // Create camera matrix
-        let mut camera_matrix = unsafe {
-            Mat::new_rows_cols(3, 3, opencv::core::CV_64F)?
-        };
+        // Create camera matrix using zeros and then fill it
+        let mut camera_matrix = Mat::zeros(3, 3, opencv::core::CV_64F)?.to_mat()?;
         let camera_matrix_data: [f64; 9] = [
             focal_length, 0.0, center.0,
             0.0, focal_length, center.1,
@@ -43,9 +41,7 @@ impl PoseEstimator {
         }
         
         // Assume no lens distortion
-        let dist_coeffs = unsafe {
-            Mat::new_rows_cols(4, 1, opencv::core::CV_64F)?
-        };
+        let dist_coeffs = Mat::zeros(4, 1, opencv::core::CV_64F)?.to_mat()?;
         
         Ok(Self {
             model_points,
@@ -68,24 +64,18 @@ impl PoseEstimator {
             .collect();
         
         // Convert points to Mat
-        let object_points_mat = unsafe {
-            let mut mat = Mat::new_rows_cols(self.model_points.len() as i32, 3, opencv::core::CV_32F)?;
-            for (i, point) in self.model_points.iter().enumerate() {
-                *mat.at_2d_mut::<f32>(i as i32, 0)? = point.x;
-                *mat.at_2d_mut::<f32>(i as i32, 1)? = point.y;
-                *mat.at_2d_mut::<f32>(i as i32, 2)? = point.z;
-            }
-            mat
-        };
+        let mut object_points_mat = Mat::zeros(self.model_points.len() as i32, 3, opencv::core::CV_32F)?.to_mat()?;
+        for (i, point) in self.model_points.iter().enumerate() {
+            *object_points_mat.at_2d_mut::<f32>(i as i32, 0)? = point.x;
+            *object_points_mat.at_2d_mut::<f32>(i as i32, 1)? = point.y;
+            *object_points_mat.at_2d_mut::<f32>(i as i32, 2)? = point.z;
+        }
         
-        let image_points_mat = unsafe {
-            let mut mat = Mat::new_rows_cols(image_points.len() as i32, 2, opencv::core::CV_32F)?;
-            for (i, point) in image_points.iter().enumerate() {
-                *mat.at_2d_mut::<f32>(i as i32, 0)? = point.x;
-                *mat.at_2d_mut::<f32>(i as i32, 1)? = point.y;
-            }
-            mat
-        };
+        let mut image_points_mat = Mat::zeros(image_points.len() as i32, 2, opencv::core::CV_32F)?.to_mat()?;
+        for (i, point) in image_points.iter().enumerate() {
+            *image_points_mat.at_2d_mut::<f32>(i as i32, 0)? = point.x;
+            *image_points_mat.at_2d_mut::<f32>(i as i32, 1)? = point.y;
+        }
         
         // Solve PnP problem
         let mut rvec = Mat::default();
@@ -174,14 +164,7 @@ mod tests {
     #[test]
     fn test_euler_angle_conversion() {
         // Test with identity matrix
-        let mut identity = unsafe {
-            Mat::new_rows_cols(3, 3, opencv::core::CV_64F).unwrap()
-        };
-        for i in 0..3 {
-            for j in 0..3 {
-                *identity.at_2d_mut::<f64>(i, j).unwrap() = if i == j { 1.0 } else { 0.0 };
-            }
-        }
+        let identity = Mat::eye(3, 3, opencv::core::CV_64F).unwrap().to_mat().unwrap();
         let angles = PoseEstimator::rotation_matrix_to_euler(&identity).unwrap();
         
         assert!((angles[0]).abs() < 1e-6);
