@@ -18,6 +18,7 @@ pub struct KalmanFilter {
 }
 
 type Matrix2x4<T> = nalgebra::Matrix<T, nalgebra::U2, nalgebra::U4, nalgebra::ArrayStorage<T, 2, 4>>;
+type Matrix4x2<T> = nalgebra::Matrix<T, nalgebra::U4, nalgebra::U2, nalgebra::ArrayStorage<T, 4, 2>>;
 
 impl KalmanFilter {
     pub fn new() -> Self {
@@ -83,7 +84,11 @@ impl KalmanFilter {
         let innovation_cov = self.measurement * self.covariance * self.measurement.transpose() + self.measurement_noise;
         
         // Kalman gain
-        let gain = self.covariance * self.measurement.transpose() * innovation_cov.try_inverse().unwrap();
+        // If matrix is singular, fall back to zero gain (no update)
+        let gain = match innovation_cov.try_inverse() {
+            Some(inv) => self.covariance * self.measurement.transpose() * inv,
+            None => Matrix4x2::zeros(), // No update if inversion fails
+        };
         
         // Update state
         self.state += gain * innovation;
