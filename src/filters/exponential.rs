@@ -70,13 +70,13 @@ mod tests {
         // High alpha = less smoothing
         let mut filter1 = ExponentialFilter::new(0.9);
         filter1.apply(10.0, 20.0);
-        let (p, y) = filter1.apply(20.0, 30.0);
+        let (p, _y) = filter1.apply(20.0, 30.0);
         assert!((p - 19.0).abs() < 0.001); // 0.9 * 20 + 0.1 * 10
         
         // Low alpha = more smoothing
         let mut filter2 = ExponentialFilter::new(0.1);
         filter2.apply(10.0, 20.0);
-        let (p, y) = filter2.apply(20.0, 30.0);
+        let (p, _y) = filter2.apply(20.0, 30.0);
         assert!((p - 11.0).abs() < 0.001); // 0.1 * 20 + 0.9 * 10
     }
 }

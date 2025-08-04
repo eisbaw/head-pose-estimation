@@ -119,7 +119,7 @@ mod tests {
         detector.reset();
         let angles = vec![(10.0, 20.0), (15.0, 25.0), (5.0, 15.0), (20.0, 30.0), (0.0, 10.0)];
         for (pitch, yaw) in angles {
-            let moving = detector.update(pitch, yaw);
+            let _moving = detector.update(pitch, yaw);
             // Should eventually detect as moving
         }
     }

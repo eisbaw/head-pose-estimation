@@ -1,7 +1,7 @@
 use clap::Parser;
 use env_logger;
 use log::{info, error};
-use head_pose_estimation::{Result, Error};
+use head_pose_estimation::Result;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
