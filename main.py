@@ -476,20 +476,21 @@ def run():
                                     filtered_dx, filtered_dy = xorg_cursor_filter.filter(dx, dy)
                                     
                                     if args.vector == "speed":
-                                        # Speed mode: interpret deltas as velocity with logarithmic scaling
+                                        # Speed mode: interpret deltas as velocity with exponential scaling
                                         with speed_mode_lock:
                                             if is_moving:
                                                 # Calculate vector length
                                                 vector_length = np.sqrt(filtered_dx**2 + filtered_dy**2)
                                                 
                                                 if vector_length > 0:
-                                                    # Apply logarithmic scaling
-                                                    # log(1 + x) gives 0 at x=0 and increases smoothly
-                                                    log_length = np.log1p(vector_length * 0.1)  # Scale factor before log
+                                                    # Apply exponential scaling for acceleration
+                                                    # Small movements stay small, large movements are amplified
+                                                    # Using power function: length^1.5 gives nice acceleration curve
+                                                    scaled_length = np.power(vector_length * 0.05, 1.5)  # Scale and exponent
                                                     
-                                                    # Normalize the vector and apply log-scaled magnitude
-                                                    cursor_velocity[0] = (filtered_dx / vector_length) * log_length * 10  # Final scale factor
-                                                    cursor_velocity[1] = (filtered_dy / vector_length) * log_length * 10
+                                                    # Normalize the vector and apply scaled magnitude
+                                                    cursor_velocity[0] = (filtered_dx / vector_length) * scaled_length
+                                                    cursor_velocity[1] = (filtered_dy / vector_length) * scaled_length
                                                 else:
                                                     cursor_velocity[0] = 0.0
                                                     cursor_velocity[1] = 0.0
