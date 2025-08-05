@@ -117,6 +117,7 @@ pub struct HeadPoseApp {
     movement_detector: Option<MovementDetector>,
     cursor_filter: Option<Box<dyn CursorFilter>>,
     video_capture: VideoCapture,
+    is_moving: bool,
 }
 
 impl HeadPoseApp {
@@ -191,6 +192,7 @@ impl HeadPoseApp {
             movement_detector,
             cursor_filter,
             video_capture,
+            is_moving: false,
         })
     }
 
@@ -359,6 +361,10 @@ impl HeadPoseApp {
 
     /// Calculate cursor position based on pose data
     fn calculate_cursor_position(&mut self, pose: &PoseData) -> Result<Option<(f64, f64)>> {
+        // Update movement detector if available
+        if let Some(detector) = &mut self.movement_detector {
+            self.is_moving = detector.update(pose.pitch, pose.yaw);
+        }
         let (raw_x, raw_y) = match self.config.data_source {
             DataSource::PitchYaw => {
                 // Map angles to normalized coordinates
@@ -392,8 +398,8 @@ impl HeadPoseApp {
         if self.config.gui_mode == GuiMode::All || self.config.gui_mode == GuiMode::Camera {
             let mut display_frame = frame.clone();
             
-            // Draw face boxes
-            for face in &result.faces {
+            // Draw face boxes and landmarks
+            for (i, face) in result.faces.iter().enumerate() {
                 imgproc::rectangle(
                     &mut display_frame,
                     face.bbox,
@@ -402,6 +408,73 @@ impl HeadPoseApp {
                     LINE_8,
                     0,
                 )?;
+                
+                // Draw landmarks if available
+                if i < result.landmarks.len() {
+                    // Get the refined box used for landmark detection
+                    let mut refined_boxes = vec![face.bbox];
+                    refine_boxes(
+                        &mut refined_boxes,
+                        display_frame.cols(),
+                        display_frame.rows(),
+                        0.2,
+                    )?;
+                    let refined_box = refined_boxes[0];
+                    
+                    for landmark in &result.landmarks[i] {
+                        // Transform landmark from face ROI coordinates to frame coordinates
+                        let x = refined_box.x + (landmark.x * refined_box.width as f32 / 256.0) as i32;
+                        let y = refined_box.y + (landmark.y * refined_box.height as f32 / 256.0) as i32;
+                        
+                        imgproc::circle(
+                            &mut display_frame,
+                            Point::new(x, y),
+                            2,
+                            Scalar::new(255.0, 0.0, 0.0, 0.0),
+                            -1,
+                            LINE_8,
+                            0,
+                        )?;
+                    }
+                }
+                
+                // Draw pose information if available
+                if i < result.poses.len() {
+                    let pose = &result.poses[i];
+                    let pose_text = format!("Pitch: {:.1} Yaw: {:.1} Roll: {:.1}", 
+                        pose.pitch, pose.yaw, pose.roll);
+                    imgproc::put_text(
+                        &mut display_frame,
+                        &pose_text,
+                        Point::new(face.bbox.x, face.bbox.y - 10),
+                        FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        Scalar::new(0.0, 255.0, 255.0, 0.0),
+                        1,
+                        LINE_8,
+                        false,
+                    )?;
+                    
+                    // Transform landmarks to frame coordinates for pose axes
+                    let mut refined_boxes = vec![face.bbox];
+                    refine_boxes(
+                        &mut refined_boxes,
+                        display_frame.cols(),
+                        display_frame.rows(),
+                        0.2,
+                    )?;
+                    let refined_box = refined_boxes[0];
+                    
+                    let transformed_landmarks: Vec<opencv::core::Point2f> = result.landmarks[i].iter()
+                        .map(|lm| opencv::core::Point2f::new(
+                            refined_box.x as f32 + (lm.x * refined_box.width as f32 / 256.0),
+                            refined_box.y as f32 + (lm.y * refined_box.height as f32 / 256.0),
+                        ))
+                        .collect();
+                    
+                    // Draw pose axes (simplified visualization using rotation matrix)
+                    self.draw_pose_axes(&mut display_frame, &transformed_landmarks, &pose.rotation_matrix, &pose.translation_vec)?;
+                }
             }
 
             // Draw FPS
@@ -418,6 +491,21 @@ impl HeadPoseApp {
                 false,
             )?;
 
+            // Draw movement detection status if available
+            if self.movement_detector.is_some() && self.is_moving {
+                imgproc::put_text(
+                        &mut display_frame,
+                        "MOVING",
+                        Point::new(10, 60),
+                        FONT_HERSHEY_SIMPLEX,
+                        1.0,
+                        Scalar::new(0.0, 0.0, 255.0, 0.0),
+                        2,
+                        LINE_8,
+                        false,
+                    )?;
+            }
+            
             highgui::imshow("Head Pose Estimation", &display_frame)?;
         }
 
@@ -446,6 +534,83 @@ impl HeadPoseApp {
 
         Ok(())
     }
+    
+    /// Draw pose axes on the frame
+    fn draw_pose_axes(
+        &self,
+        frame: &mut Mat,
+        landmarks: &[opencv::core::Point2f],
+        rotation_mat: &Mat,
+        _translation_vec: &Vec3d,
+    ) -> Result<()> {
+        // Use nose tip as origin (landmark 30)
+        if landmarks.len() > 30 {
+            let nose_tip = &landmarks[30];
+            let origin = Point::new(nose_tip.x as i32, nose_tip.y as i32);
+            
+            // Define axis lengths
+            let axis_length = 50.0;
+            
+            // Get rotation matrix values
+            let r11 = *rotation_mat.at_2d::<f64>(0, 0)?;
+            let r12 = *rotation_mat.at_2d::<f64>(0, 1)?;
+            let r21 = *rotation_mat.at_2d::<f64>(1, 0)?;
+            let r22 = *rotation_mat.at_2d::<f64>(1, 1)?;
+            let r31 = *rotation_mat.at_2d::<f64>(2, 0)?;
+            let r32 = *rotation_mat.at_2d::<f64>(2, 1)?;
+            
+            // Project 3D axes to 2D
+            // X-axis (red)
+            let x_end = Point::new(
+                origin.x + (r11 * axis_length) as i32,
+                origin.y + (r21 * axis_length) as i32,
+            );
+            imgproc::arrowed_line(
+                frame,
+                origin,
+                x_end,
+                Scalar::new(0.0, 0.0, 255.0, 0.0),
+                2,
+                LINE_8,
+                0,
+                0.2,
+            )?;
+            
+            // Y-axis (green)
+            let y_end = Point::new(
+                origin.x + (r12 * axis_length) as i32,
+                origin.y + (r22 * axis_length) as i32,
+            );
+            imgproc::arrowed_line(
+                frame,
+                origin,
+                y_end,
+                Scalar::new(0.0, 255.0, 0.0, 0.0),
+                2,
+                LINE_8,
+                0,
+                0.2,
+            )?;
+            
+            // Z-axis (blue) - pointing out of the face
+            let z_end = Point::new(
+                origin.x + (r31 * axis_length) as i32,
+                origin.y + (r32 * axis_length) as i32,
+            );
+            imgproc::arrowed_line(
+                frame,
+                origin,
+                z_end,
+                Scalar::new(255.0, 0.0, 0.0, 0.0),
+                2,
+                LINE_8,
+                0,
+                0.2,
+            )?;
+        }
+        
+        Ok(())
+    }
 }
 
 /// Result of processing a single frame
@@ -458,10 +623,13 @@ struct ProcessingResult {
 
 /// Pose estimation data
 struct PoseData {
+    #[allow(dead_code)]
     rotation_vec: Vec3d,
+    #[allow(dead_code)]
     translation_vec: Vec3d,
     rotation_matrix: Mat,
     pitch: f64,
     yaw: f64,
+    #[allow(dead_code)]
     roll: f64,
 }
