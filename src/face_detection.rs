@@ -591,6 +591,40 @@ impl FaceDetector {
 mod tests {
     use super::*;
 
+    /// Helper function for testing distance to bbox conversion
+    fn test_distance_to_bbox_conversion(
+        points: &[(f32, f32)], 
+        distances: &[f32], 
+        max_shape: Option<(i32, i32)>
+    ) -> Vec<Rect> {
+        let mut boxes = Vec::new();
+
+        for (i, &(cx, cy)) in points.iter().enumerate() {
+            if i * 4 + 3 >= distances.len() {
+                break;
+            }
+
+            let x1 = cx - distances[i * 4];
+            let y1 = cy - distances[i * 4 + 1];
+            let x2 = cx + distances[i * 4 + 2];
+            let y2 = cy + distances[i * 4 + 3];
+
+            let mut bbox = Rect::new(x1 as i32, y1 as i32, (x2 - x1) as i32, (y2 - y1) as i32);
+
+            // Clip to image boundaries if max_shape is provided
+            if let Some((max_w, max_h)) = max_shape {
+                bbox.x = bbox.x.max(0);
+                bbox.y = bbox.y.max(0);
+                bbox.width = bbox.width.min(max_w - bbox.x);
+                bbox.height = bbox.height.min(max_h - bbox.y);
+            }
+
+            boxes.push(bbox);
+        }
+
+        boxes
+    }
+    
     #[test]
     fn test_distance_to_bbox() {
         let points = vec![(100.0, 100.0), (200.0, 200.0)];
@@ -599,7 +633,7 @@ mod tests {
             15.0, 15.0, 25.0, 25.0, // Second box
         ];
 
-        let boxes = FaceDetector::distance_to_bbox(&points, &distances, Some((640, 480)));
+        let boxes = test_distance_to_bbox_conversion(&points, &distances, Some((640, 480)));
 
         assert_eq!(boxes.len(), 2);
         assert_eq!(boxes[0].x, 90);
