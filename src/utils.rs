@@ -1,15 +1,18 @@
 //! Utility functions for image processing and coordinate transformations.
 
+pub mod safe_cast;
+
 use crate::Result;
 use opencv::core::Rect;
+use safe_cast::f32_to_i32_clamp;
 
 /// Refine bounding boxes to ensure they are within image boundaries
 ///
 /// This is a port of the Python `refine()` function from utils.py
 pub fn refine_boxes(boxes: &mut [Rect], max_width: i32, max_height: i32, shift: f32) -> Result<()> {
     for bbox in boxes.iter_mut() {
-        let x_shift = (bbox.width as f32 * shift) as i32;
-        let y_shift = (bbox.height as f32 * shift) as i32;
+        let x_shift = f32_to_i32_clamp(bbox.width as f32 * shift, 0, max_width);
+        let y_shift = f32_to_i32_clamp(bbox.height as f32 * shift, 0, max_height);
 
         // Expand the bounding box
         bbox.x = (bbox.x - x_shift).max(0);

@@ -270,9 +270,9 @@ approx = "0.5"
 
 ### Testing
 - [x] DONE: Add integration tests for full pipeline
-- [ ] Add performance benchmarks
+- [x] DONE: Add performance benchmarks
 - [x] DONE: Test with actual ONNX models
-- [ ] Test cursor control functionality
+- [x] DONE: Test cursor control functionality
 
 ## Code Quality Issues (Found by Clippy)
 
