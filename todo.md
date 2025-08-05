@@ -269,7 +269,7 @@ approx = "0.5"
 - [x] DONE: Implement debug overlay (angles, movement status, statistics)
 
 ### Testing
-- [ ] Add integration tests for full pipeline
+- [x] DONE: Add integration tests for full pipeline
 - [ ] Add performance benchmarks
 - [x] DONE: Test with actual ONNX models
 - [ ] Test cursor control functionality
