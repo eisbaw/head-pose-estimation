@@ -248,6 +248,13 @@ approx = "0.5"
 - [x] DONE: Add missing documentation for all public items
 - [x] DONE: Add comprehensive module-level documentation
 - [x] DONE: Document error types and their meanings
+- [x] DONE: Fix inline format string warnings (use {variable} syntax)
+- [x] DONE: Remove unnecessary Result wrappers
+- [x] DONE: Fix unused self arguments - refactor to associated functions
+- [x] DONE: Fix needless_pass_by_value warnings
+- [x] DONE: Fix type_complexity warning with type aliases
+- [x] DONE: Replace manual range loops with iterators
+- [x] DONE: Fix cast_lossless warnings - use From trait
 
 ### Implementation TODOs
 - [x] DONE: Implement ONNX model loading in FaceDetector::new
@@ -305,8 +312,11 @@ approx = "0.5"
 ### Unit Tests
 - [x] DONE: Test refine_boxes edge cases (empty boxes, negative values)
 - [x] DONE: Test filter reset functionality for all filters
-- [ ] Test MovementDetector with edge cases
-- [ ] Test PoseEstimator::parse_model_points with invalid input
+- [x] DONE: Test MovementDetector with edge cases
+- [x] DONE: Test PoseEstimator::parse_model_points with invalid input
+- [x] DONE: Test filter creation with parameters
+- [x] DONE: Test filter extreme values (infinity, NaN)
+- [x] DONE: Test filter convergence and impulse response
 - [ ] Test error handling in all modules
 
 ### Integration Tests
