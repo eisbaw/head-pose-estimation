@@ -1,6 +1,7 @@
 //! Utility functions for image processing and coordinate transformations.
 
 pub mod safe_cast;
+pub mod image_conversion;
 
 use crate::Result;
 use opencv::core::Rect;
