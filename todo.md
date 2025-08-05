@@ -265,7 +265,7 @@ approx = "0.5"
 - [x] DONE: Implement video capture from file
 - [x] DONE: Implement cursor control (X11)
 - [x] DONE: Implement GUI visualization
-- [ ] Implement filter mode switching
+- [x] DONE: Implement filter mode switching (show all filters for comparison)
 - [ ] Implement debug overlay
 
 ### Testing
