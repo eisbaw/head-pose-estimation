@@ -115,8 +115,12 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
         }
         "lowpass" | "low_pass" => {
             let cutoff = if parts.len() > 1 {
-                parts[1].parse::<f64>()
-                    .map_err(|_| crate::Error::FilterError(format!("Invalid cutoff frequency: {}", parts[1])))?
+                let val = parts[1].parse::<f64>()
+                    .map_err(|_| crate::Error::FilterError(format!("Invalid cutoff frequency: {}", parts[1])))?;
+                if val <= 0.0 || val > 1.0 {
+                    return Err(crate::Error::FilterError(format!("Cutoff must be in (0, 1], got {val}")));
+                }
+                val
             } else {
                 0.5
             };
@@ -149,8 +153,12 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
                 5
             };
             let threshold = if parts.len() > 2 {
-                parts[2].parse::<f64>()
-                    .map_err(|_| crate::Error::FilterError(format!("Invalid threshold: {}", parts[2])))?
+                let val = parts[2].parse::<f64>()
+                    .map_err(|_| crate::Error::FilterError(format!("Invalid threshold: {}", parts[2])))?;
+                if val < 0.0 {
+                    return Err(crate::Error::FilterError(format!("Threshold must be non-negative, got {val}")));
+                }
+                val
             } else {
                 3.0
             };
