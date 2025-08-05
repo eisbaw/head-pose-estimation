@@ -14,12 +14,12 @@
 - [x] DONE: Add rustfmt.toml and clippy configuration (in Cargo.toml)
 
 ### Week 2: Core Infrastructure
-- [ ] Implement basic image type conversions (OpenCV Mat <-> ndarray)
+- [x] DONE: Implement basic image type conversions (OpenCV Mat <-> ndarray)
 - [x] DONE: Create bounding box struct and operations (using opencv::core::Rect)
 - [x] DONE: Port `refine()` function from utils.py
-- [ ] Implement basic geometry helpers
+- [x] DONE: Implement basic geometry helpers
 - [x] DONE: Create trait for cursor filters
-- [ ] Set up ONNX Runtime initialization
+- [x] DONE: Set up ONNX Runtime initialization
 - [x] DONE: Add configuration struct for application settings
 - [x] DONE: Implement command-line argument parsing with clap
 
@@ -77,7 +77,7 @@
 - [x] DONE: Implement HampelFilter
 - [ ] Optimize filter performance
 - [x] DONE: Add benchmarks for filters
-- [ ] Ensure numerical accuracy matches Python
+- [x] DONE: Ensure numerical accuracy matches Python
 
 ## Phase 5: Application Features
 
@@ -132,7 +132,7 @@
 - [ ] Optimize hot paths
 - [ ] Add SIMD optimizations where beneficial
 - [ ] Test with various video inputs
-- [ ] Ensure filter outputs match Python within tolerance
+- [x] DONE: Ensure filter outputs match Python within tolerance
 - [ ] Create test suite for cursor control
 
 ### Week 13: Polish and Documentation
