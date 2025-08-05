@@ -256,7 +256,10 @@ pub fn mats_to_array4_f32(mats: &[Mat]) -> Result<Array4<f32>> {
     for (batch_idx, mat) in mats.iter().enumerate() {
         let array = mat_to_array3_f32(mat)?;
         let start_idx = batch_idx * first_rows * first_cols * first_channels;
-        data[start_idx..start_idx + array.len()].copy_from_slice(array.as_slice().unwrap());
+        data[start_idx..start_idx + array.len()].copy_from_slice(
+            array.as_slice()
+                .ok_or_else(|| crate::Error::InvalidInput("Array is not contiguous".to_string()))?
+        );
     }
     
     Array4::from_shape_vec(
