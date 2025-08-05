@@ -250,14 +250,14 @@ approx = "0.5"
 - [x] DONE: Document error types and their meanings
 
 ### Implementation TODOs
-- [ ] Implement ONNX model loading in FaceDetector::new
-- [ ] Implement face detection preprocessing in FaceDetector::detect
-- [ ] Implement face detection inference
-- [ ] Implement face detection postprocessing with NMS
-- [ ] Implement ONNX model loading in MarkDetector::new
-- [ ] Implement landmark detection preprocessing
-- [ ] Implement landmark detection inference
-- [ ] Port distance2kps function for face detection
+- [x] DONE: Implement ONNX model loading in FaceDetector::new
+- [x] DONE: Implement face detection preprocessing in FaceDetector::detect
+- [x] DONE: Implement face detection inference
+- [x] DONE: Implement face detection postprocessing with NMS
+- [x] DONE: Implement ONNX model loading in MarkDetector::new
+- [x] DONE: Implement landmark detection preprocessing
+- [x] DONE: Implement landmark detection inference
+- [x] DONE: Port distance2kps function for face detection
 
 ### Missing Core Functionality
 - [ ] Implement main application loop

@@ -19,7 +19,7 @@ pub struct FaceDetection {
     pub keypoints: Option<Vec<Point2f>>,
 }
 
-/// SCRFD Face Detector using ONNX Runtime
+/// SCRFD Face Detector using `ONNX` Runtime
 pub struct FaceDetector {
     session: Session,
     input_name: String,
@@ -35,7 +35,7 @@ pub struct FaceDetector {
 }
 
 impl FaceDetector {
-    /// Create a new face detector from an ONNX model file
+    /// Create a new face detector from an `ONNX` model file
     #[allow(clippy::too_many_lines)]
     pub fn new<P: AsRef<Path>>(model_path: P, conf_threshold: f32, nms_threshold: f32) -> Result<Self> {
         let environment = Arc::new(
@@ -164,7 +164,7 @@ impl FaceDetector {
         Ok(detections)
     }
     
-    /// Preprocess image for ONNX model
+    /// Preprocess image for `ONNX` model
     fn preprocess(&self, image: &Mat) -> Result<Array4<f32>> {
         // Convert BGR to RGB and normalize
         let mut rgb_image = Mat::default();
@@ -435,7 +435,7 @@ impl FaceDetector {
         Ok(detections)
     }
     
-    /// Non-Maximum Suppression
+    /// Non-Maximum Suppression (`NMS`)
     fn nms(
         &self,
         bboxes: &Array2<f32>,

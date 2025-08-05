@@ -7,7 +7,7 @@ use ort::{Environment, Session, Value};
 use std::path::Path;
 use std::sync::Arc;
 
-/// Facial landmark detector using ONNX Runtime
+/// Facial landmark detector using `ONNX` Runtime
 pub struct MarkDetector {
     session: Session,
     input_name: String,
@@ -16,7 +16,7 @@ pub struct MarkDetector {
 }
 
 impl MarkDetector {
-    /// Create a new landmark detector from an ONNX model file
+    /// Create a new landmark detector from an `ONNX` model file
     pub fn new<P: AsRef<Path>>(model_path: P) -> Result<Self> {
         let environment = Arc::new(
             Environment::builder()

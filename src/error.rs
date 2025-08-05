@@ -9,7 +9,7 @@ pub enum Error {
     #[error("OpenCV error: {0}")]
     OpenCV(#[from] opencv::Error),
 
-    /// ONNX Runtime inference failed
+    /// `ONNX` Runtime inference failed
     #[error("ONNX Runtime error: {0}")]
     OnnxRuntime(#[from] ort::OrtError),
 
@@ -21,7 +21,7 @@ pub enum Error {
     #[error("Image processing error: {0}")]
     Image(#[from] image::ImageError),
 
-    /// X11 window system operation failed
+    /// `X11` window system operation failed
     #[error("X11 error: {0}")]
     X11(String),
 
