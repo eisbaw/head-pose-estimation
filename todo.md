@@ -53,7 +53,7 @@
 - [x] DONE: Implement camera matrix initialization
 - [x] DONE: Port PnP solver using OpenCV
 - [x] DONE: Implement Euler angle extraction
-- [ ] Port pose visualization (3D box drawing)
+- [x] DONE: Port pose visualization (3D box drawing)
 - [x] DONE: Implement draw_axes functionality
 - [x] DONE: Implement draw_normal_vector functionality
 - [x] DONE: Add tests for pose estimation accuracy (test_euler_angle_conversion)
