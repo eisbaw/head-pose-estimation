@@ -49,6 +49,7 @@ impl FaceDetector {
     /// Create a new face detector from an `ONNX` model file
     #[allow(clippy::too_many_lines)]
     pub fn new<P: AsRef<Path>>(model_path: P, conf_threshold: f32, nms_threshold: f32) -> Result<Self> {
+        log::info!("Initializing FaceDetector with model: {}", model_path.as_ref().display());
         let environment = Arc::new(
             Environment::builder()
                 .with_name("face_detector")
@@ -250,7 +251,21 @@ impl FaceDetector {
             let bbox_output = outputs[bbox_idx].try_extract::<f32>()?;
             let bbox_view = bbox_output.view();
             let bbox_shape = bbox_view.shape();
-            let n_anchors = bbox_shape[0] * bbox_shape[1] * bbox_shape[2];
+            log::debug!("Bbox shape for stride {}: {:?}", stride, bbox_shape);
+            
+            let n_anchors = if bbox_shape.len() == 2 {
+                // Shape is [n_anchors, 4] - already flattened
+                bbox_shape[0]
+            } else if bbox_shape.len() == 3 {
+                // Shape is [height, width, 4] - need to flatten
+                bbox_shape[0] * bbox_shape[1]
+            } else {
+                return Err(crate::error::Error::ModelError(format!(
+                    "Unexpected bbox shape dimensions: expected 2 or 3, got {} (shape: {:?})",
+                    bbox_shape.len(),
+                    bbox_shape
+                )));
+            };
             let bbox_slice = bbox_view.as_slice()
                 .ok_or_else(|| crate::error::Error::ModelError("Failed to get bbox data as slice".to_string()))?;
             let bbox_data: Vec<f32> = bbox_slice

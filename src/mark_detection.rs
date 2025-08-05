@@ -26,6 +26,7 @@ pub struct MarkDetector {
 impl MarkDetector {
     /// Create a new landmark detector from an `ONNX` model file
     pub fn new<P: AsRef<Path>>(model_path: P) -> Result<Self> {
+        log::info!("Initializing MarkDetector with model: {}", model_path.as_ref().display());
         let environment = Arc::new(
             Environment::builder()
                 .with_name("mark_detector")

@@ -32,4 +32,7 @@ pub mod utils;
 /// Error types and result handling
 pub mod error;
 
+/// Main application module
+pub mod app;
+
 pub use error::{Error, Result};

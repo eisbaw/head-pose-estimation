@@ -17,6 +17,7 @@ pub struct PoseEstimator {
 impl PoseEstimator {
     /// Create a new pose estimator with 3D model points and camera parameters
     pub fn new<P: AsRef<Path>>(model_path: P, image_width: i32, image_height: i32) -> Result<Self> {
+        log::info!("Initializing PoseEstimator with model: {}", model_path.as_ref().display());
         // Load 3D model points from file
         let model_content = fs::read_to_string(model_path)?;
         let model_points = Self::parse_model_points(&model_content)?;
@@ -126,28 +127,28 @@ impl PoseEstimator {
 
     /// Parse 3D model points from text file
     fn parse_model_points(content: &str) -> Result<Vec<Point3f>> {
-        let mut points = Vec::new();
-
-        for line in content.lines() {
-            let coords: Vec<f32> = line.split_whitespace().filter_map(|s| s.parse().ok()).collect();
-
-            if coords.len() == 3 {
-                points.push(Point3f::new(coords[0], coords[1], coords[2]));
-            }
-        }
-
-        if points.len() != 68 {
+        let values: Vec<f32> = content
+            .lines()
+            .filter_map(|line| line.trim().parse::<f32>().ok())
+            .collect();
+        
+        if values.len() != 204 {
             return Err(Error::ModelError(format!(
-                "Expected 68 model points, got {}",
-                points.len()
+                "Expected 204 coordinate values (68 points × 3), got {}",
+                values.len()
             )));
         }
-
+        
+        let mut points = Vec::new();
+        for i in (0..values.len()).step_by(3) {
+            points.push(Point3f::new(values[i], values[i + 1], values[i + 2]));
+        }
+        
         Ok(points)
     }
 
     /// Convert rotation matrix to Euler angles
-    fn rotation_matrix_to_euler(rotation_matrix: &Mat) -> Result<Vec3d> {
+    pub fn rotation_matrix_to_euler(rotation_matrix: &Mat) -> Result<Vec3d> {
         // Extract rotation matrix values
         let _r11 = rotation_matrix.at_2d::<f64>(0, 0)?;
         let _r12 = rotation_matrix.at_2d::<f64>(0, 1)?;
