@@ -374,10 +374,10 @@ approx = "0.5"
 ### Medium Priority
 - [x] DONE: Use inline format variables instead of positional parameters
 - [x] DONE: Derive Eq for enums that derive PartialEq  
-- [ ] Make const-eligible functions const
+- [x] DONE: Make const-eligible functions const
 - [x] DONE: Use f64::from() for lossless casts (added allow attributes where precision loss is acceptable)
-- [ ] Remove unused self parameters or refactor to associated functions
-- [ ] Fix similar variable names (stats_text vs status_text)
+- [x] DONE: Remove unused self parameters or refactor to associated functions
+- [x] DONE: Fix similar variable names (stats_text vs status_text)
 
 ### Performance Improvements
 - [ ] Replace Vec<u8> allocation with iterators in face detection
@@ -389,13 +389,13 @@ approx = "0.5"
 - [x] DONE: Add error context instead of generic "Failed to X" messages
 - [x] DONE: Use more specific error types (used allow attributes for acceptable cases)
 - [x] DONE: Document panics in public APIs (added # Errors sections)
-- [ ] Add examples to public functions
+- [x] DONE: Add examples to public functions
 - [x] DONE: Use type aliases for complex types
 
 ## New Code Quality Issues Found (2025-08-05)
 
 ### Error Handling Improvements
-- [ ] Create domain-specific error variants instead of generic ModelError
+- [x] DONE: Create domain-specific error variants instead of generic ModelError
 - [ ] Add error recovery strategies for non-fatal errors
 - [ ] Implement retry logic for transient failures
 - [ ] Add structured logging with error codes
@@ -413,8 +413,8 @@ approx = "0.5"
 - [ ] Create migration guide from Python version
 
 ### Testing Gaps
-- [ ] Add property-based tests for numeric conversions
-- [ ] Test edge cases for safe_cast functions
+- [x] DONE: Add property-based tests for numeric conversions
+- [x] DONE: Test edge cases for safe_cast functions
 - [ ] Add fuzz testing for ONNX model inputs
 - [ ] Create benchmarks for critical paths
 

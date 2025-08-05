@@ -76,7 +76,7 @@ impl FaceDetector {
 
         // Get model configurations from the model
         let input_meta = session.inputs.first()
-            .ok_or_else(|| crate::error::Error::ModelError("Model has no inputs".to_string()))?;
+            .ok_or_else(|| crate::error::Error::ModelInputError("Model has no inputs".to_string()))?;
         
         let input_name = input_meta.name.clone();
         let input_shape = &input_meta.dimensions;
@@ -231,7 +231,7 @@ impl FaceDetector {
         
         // Reshape to NCHW format
         let mut array = Array4::from_shape_vec((1, height, width, channels), data)
-            .map_err(|e| crate::error::Error::ModelError(format!("Failed to create array: {e}")))?;
+            .map_err(|e| crate::error::Error::ModelDataFormatError(format!("Failed to create array: {e}")))?;
         
         // Transpose from NHWC to NCHW
         array = array.permuted_axes([0, 3, 1, 2]);
@@ -266,7 +266,7 @@ impl FaceDetector {
             let scores_output = outputs[idx].try_extract::<f32>()?;
             let scores_view = scores_output.view();
             let scores_flat = scores_view.as_slice()
-                .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract scores as slice for stride {stride} at output index {idx}")))?;
+                .ok_or_else(|| crate::error::Error::ModelOutputError(format!("Failed to extract scores as slice for stride {stride} at output index {idx}")))?;
             let scores = Array1::from(scores_flat.to_vec());
             
             // Extract bbox predictions
@@ -283,20 +283,20 @@ impl FaceDetector {
                 // Shape is [height, width, 4] - need to flatten
                 bbox_shape[0] * bbox_shape[1]
             } else {
-                return Err(crate::error::Error::ModelError(format!(
+                return Err(crate::error::Error::ModelDataFormatError(format!(
                     "Unexpected bbox shape dimensions: expected 2 or 3, got {} (shape: {:?})",
                     bbox_shape.len(),
                     bbox_shape
                 )));
             };
             let bbox_slice = bbox_view.as_slice()
-                .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract bbox data as slice for stride {stride} at output index {bbox_idx}")))?;
+                .ok_or_else(|| crate::error::Error::ModelOutputError(format!("Failed to extract bbox data as slice for stride {stride} at output index {bbox_idx}")))?;
             let bbox_data: Vec<f32> = bbox_slice
                 .iter()
                 .map(|&x| x * stride as f32)
                 .collect();
             let bboxes = Array2::from_shape_vec((n_anchors, 4), bbox_data)
-                .map_err(|e| crate::error::Error::ModelError(format!("Failed to reshape bbox: {e}")))?;
+                .map_err(|e| crate::error::Error::ModelDataFormatError(format!("Failed to reshape bbox: {e}")))?;
             
             // Generate anchor centers
             let height = input_height / stride;
@@ -331,7 +331,7 @@ impl FaceDetector {
                 pos_inds.iter()
                     .flat_map(|&i| decoded_bboxes.row(i).to_vec())
                     .collect(),
-            ).map_err(|e| crate::error::Error::ModelError(format!("Failed to collect bboxes: {e}")))?;
+            ).map_err(|e| crate::error::Error::ModelDataFormatError(format!("Failed to collect bboxes: {e}")))?;
             
             scores_list.push(pos_scores);
             bboxes_list.push(pos_bboxes);
@@ -342,7 +342,7 @@ impl FaceDetector {
                 let kps_output = outputs[kps_idx].try_extract::<f32>()?;
                 let kps_view = kps_output.view();
                 let kps_slice = kps_view.as_slice()
-                    .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract keypoints data as slice for stride {stride} at output index {kps_idx}")))?;
+                    .ok_or_else(|| crate::error::Error::ModelOutputError(format!("Failed to extract keypoints data as slice for stride {stride} at output index {kps_idx}")))?;
                 let kps_data: Vec<f32> = kps_slice
                     .iter()
                     .map(|&x| x * stride as f32)
@@ -354,7 +354,7 @@ impl FaceDetector {
                     pos_inds.iter()
                         .flat_map(|&i| kpss.slice(s![i, .., ..]).iter().copied().collect::<Vec<f32>>())
                         .collect(),
-                ).map_err(|e| crate::error::Error::ModelError(format!("Failed to collect kpss: {e}")))?;
+                ).map_err(|e| crate::error::Error::ModelDataFormatError(format!("Failed to collect kpss: {e}")))?;
                 
                 kpss_list.push(pos_kpss);
             }
@@ -388,7 +388,7 @@ impl FaceDetector {
         
         let n_points = (height as usize) * (width as usize) * self.num_anchors;
         Array2::from_shape_vec((n_points, 2), centers)
-            .map_err(|e| crate::error::Error::ModelError(format!("Failed to create anchor centers array: {e}")))
+            .map_err(|e| crate::error::Error::ModelDataFormatError(format!("Failed to create anchor centers array: {e}")))
     }
     
     /// Convert distance predictions to bounding boxes (array version)

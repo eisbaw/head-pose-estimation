@@ -48,13 +48,13 @@ impl MarkDetector {
         // Get model input/output metadata
         let input_name = session.inputs
             .first()
-            .ok_or_else(|| crate::error::Error::ModelError("Model has no inputs".to_string()))?
+            .ok_or_else(|| crate::error::Error::ModelInputError("Model has no inputs".to_string()))?
             .name
             .clone();
         
         let output_name = session.outputs
             .first()
-            .ok_or_else(|| crate::error::Error::ModelError("Model has no outputs".to_string()))?
+            .ok_or_else(|| crate::error::Error::ModelOutputError("Model has no outputs".to_string()))?
             .name
             .clone();
 
@@ -150,7 +150,7 @@ impl MarkDetector {
         let array = Array4::from_shape_vec(
             (batch_size, size, size, channels),
             batch_data,
-        ).map_err(|e| crate::error::Error::ModelError(format!("Failed to create array: {e}")))?;
+        ).map_err(|e| crate::error::Error::ModelDataFormatError(format!("Failed to create array: {e}")))?;
         
         // Note: Some models might expect NHWC format, but most expect NCHW
         // If the model expects NCHW, uncomment the following line:
@@ -171,12 +171,12 @@ impl MarkDetector {
         // Extract marks output
         let marks_output = outputs.into_iter()
             .next()
-            .ok_or_else(|| crate::error::Error::ModelError("No output from model".to_string()))?;
+            .ok_or_else(|| crate::error::Error::ModelOutputError("No output from model".to_string()))?;
         
         let marks_tensor = marks_output.try_extract::<f32>()?;
         let marks_view = marks_tensor.view();
         let marks_data = marks_view.as_slice()
-            .ok_or_else(|| crate::error::Error::ModelError("Failed to get output data".to_string()))?;
+            .ok_or_else(|| crate::error::Error::ModelOutputError("Failed to get output data".to_string()))?;
         
         Ok(Array1::from(marks_data.to_vec()))
     }

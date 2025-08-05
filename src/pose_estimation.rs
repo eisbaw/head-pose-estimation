@@ -151,7 +151,7 @@ impl PoseEstimator {
             .collect();
         
         if values.len() != MODEL_POINTS_TOTAL_VALUES {
-            return Err(Error::ModelError(format!(
+            return Err(Error::ModelValidationError(format!(
                 "Expected {} coordinate values ({} points × 3), got {}",
                 MODEL_POINTS_TOTAL_VALUES,
                 NUM_FACIAL_LANDMARKS,

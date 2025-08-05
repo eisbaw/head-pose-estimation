@@ -171,6 +171,10 @@ fn test_error_display_formatting() {
     let errors = vec![
         AppError::InvalidInput("Test input error".to_string()),
         AppError::ModelError("Test model error".to_string()),
+        AppError::ModelInputError("Test model input error".to_string()),
+        AppError::ModelOutputError("Test model output error".to_string()),
+        AppError::ModelDataFormatError("Test model data format error".to_string()),
+        AppError::ModelValidationError("Test model validation error".to_string()),
         AppError::CursorControl("Test cursor error".to_string()),
         AppError::FilterError("Test filter error".to_string()),
     ];

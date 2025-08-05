@@ -148,8 +148,22 @@ impl Default for CursorMode {
     }
 }
 
+impl CursorMode {
+    /// Returns the default cursor mode
+    pub const fn default_const() -> Self {
+        Self::Absolute
+    }
+}
+
 impl Default for DataSource {
     fn default() -> Self {
+        Self::PitchYaw
+    }
+}
+
+impl DataSource {
+    /// Returns the default data source
+    pub const fn default_const() -> Self {
         Self::PitchYaw
     }
 }
