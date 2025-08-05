@@ -1,5 +1,5 @@
 //! Signal filtering algorithms for smoothing pose estimates.
-//! 
+//!
 //! This module provides various filtering algorithms to smooth noisy
 //! head pose angle measurements, reducing jitter and improving stability.
 
@@ -27,10 +27,10 @@ use crate::Result;
 pub trait CursorFilter: Send + Sync {
     /// Apply filter to input values
     fn apply(&mut self, pitch: f64, yaw: f64) -> (f64, f64);
-    
+
     /// Reset filter state
     fn reset(&mut self);
-    
+
     /// Get filter name
     fn name(&self) -> &str;
 }
@@ -42,9 +42,9 @@ impl CursorFilter for NoFilter {
     fn apply(&mut self, pitch: f64, yaw: f64) -> (f64, f64) {
         (pitch, yaw)
     }
-    
+
     fn reset(&mut self) {}
-    
+
     fn name(&self) -> &str {
         "NoFilter"
     }
@@ -76,7 +76,7 @@ mod tests {
         assert_eq!(pitch, 10.0);
         assert_eq!(yaw, 20.0);
     }
-    
+
     #[test]
     fn test_create_filter() {
         assert!(create_filter("none").is_ok());

@@ -1,7 +1,7 @@
-use opencv::{core::{Mat, Rect}};
+use crate::Result;
+use opencv::core::{Mat, Rect};
 use ort::{Environment, Session};
 use std::path::Path;
-use crate::Result;
 
 /// SCRFD Face Detector using ONNX Runtime
 #[allow(dead_code)] // Fields will be used in TODO implementation
@@ -19,16 +19,16 @@ impl FaceDetector {
             Environment::builder()
                 .with_name("face_detector")
                 .with_log_level(ort::LoggingLevel::Warning)
-                .build()?
+                .build()?,
         );
-            
+
         let session = ort::SessionBuilder::new(&environment)?
             .with_optimization_level(ort::GraphOptimizationLevel::Level3)?
             .with_model_from_file(model_path)?;
-            
+
         // Default SCRFD input size
         let input_size = (640, 640);
-        
+
         Ok(Self {
             session,
             input_size,
@@ -36,8 +36,9 @@ impl FaceDetector {
             nms_threshold,
         })
     }
-    
+
     /// Detect faces in an image
+    #[allow(clippy::missing_const_for_fn)] // Can't be const due to Result allocation
     pub fn detect(&self, _image: &Mat) -> Result<Vec<Rect>> {
         // TODO: Implement preprocessing
         // TODO: Implement inference
@@ -45,30 +46,25 @@ impl FaceDetector {
         // For now, return empty vector
         Ok(Vec::new())
     }
-    
+
     /// Convert distance predictions to bounding boxes
     #[allow(dead_code)] // Will be used in detect() implementation
     fn distance_to_bbox(points: &[(f32, f32)], distances: &[f32], max_shape: Option<(i32, i32)>) -> Vec<Rect> {
         // Port of distance2bbox from Python
         let mut boxes = Vec::new();
-        
+
         for (i, &(cx, cy)) in points.iter().enumerate() {
             if i * 4 + 3 >= distances.len() {
                 break;
             }
-            
+
             let x1 = cx - distances[i * 4];
             let y1 = cy - distances[i * 4 + 1];
             let x2 = cx + distances[i * 4 + 2];
             let y2 = cy + distances[i * 4 + 3];
-            
-            let mut bbox = Rect::new(
-                x1 as i32,
-                y1 as i32,
-                (x2 - x1) as i32,
-                (y2 - y1) as i32,
-            );
-            
+
+            let mut bbox = Rect::new(x1 as i32, y1 as i32, (x2 - x1) as i32, (y2 - y1) as i32);
+
             // Clip to image boundaries if max_shape is provided
             if let Some((max_w, max_h)) = max_shape {
                 bbox.x = bbox.x.max(0);
@@ -76,10 +72,10 @@ impl FaceDetector {
                 bbox.width = bbox.width.min(max_w - bbox.x);
                 bbox.height = bbox.height.min(max_h - bbox.y);
             }
-            
+
             boxes.push(bbox);
         }
-        
+
         boxes
     }
 }
@@ -92,12 +88,12 @@ mod tests {
     fn test_distance_to_bbox() {
         let points = vec![(100.0, 100.0), (200.0, 200.0)];
         let distances = vec![
-            10.0, 10.0, 20.0, 20.0,  // First box
-            15.0, 15.0, 25.0, 25.0,  // Second box
+            10.0, 10.0, 20.0, 20.0, // First box
+            15.0, 15.0, 25.0, 25.0, // Second box
         ];
-        
+
         let boxes = FaceDetector::distance_to_bbox(&points, &distances, Some((640, 480)));
-        
+
         assert_eq!(boxes.len(), 2);
         assert_eq!(boxes[0].x, 90);
         assert_eq!(boxes[0].y, 90);

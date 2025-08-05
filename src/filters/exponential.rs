@@ -9,9 +9,9 @@ pub struct ExponentialFilter {
 
 impl ExponentialFilter {
     /// Create a new exponential filter
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if alpha is not in the range (0, 1]
     #[must_use]
     pub fn new(alpha: f64) -> Self {
@@ -30,23 +30,23 @@ impl CursorFilter for ExponentialFilter {
             Some(last) => self.alpha.mul_add(pitch, (1.0 - self.alpha) * last),
             None => pitch,
         };
-        
+
         let filtered_yaw = match self.last_yaw {
             Some(last) => self.alpha.mul_add(yaw, (1.0 - self.alpha) * last),
             None => yaw,
         };
-        
+
         self.last_pitch = Some(filtered_pitch);
         self.last_yaw = Some(filtered_yaw);
-        
+
         (filtered_pitch, filtered_yaw)
     }
-    
+
     fn reset(&mut self) {
         self.last_pitch = None;
         self.last_yaw = None;
     }
-    
+
     fn name(&self) -> &str {
         "ExponentialFilter"
     }
@@ -59,18 +59,18 @@ mod tests {
     #[test]
     fn test_exponential_filter() {
         let mut filter = ExponentialFilter::new(0.5);
-        
+
         // First value passes through
         let (p1, y1) = filter.apply(10.0, 20.0);
         assert_eq!(p1, 10.0);
         assert_eq!(y1, 20.0);
-        
+
         // Second value is smoothed
         let (p2, y2) = filter.apply(20.0, 30.0);
         assert_eq!(p2, 15.0); // 0.5 * 20 + 0.5 * 10
         assert_eq!(y2, 25.0);
     }
-    
+
     #[test]
     fn test_alpha_bounds() {
         // High alpha = less smoothing
@@ -78,25 +78,25 @@ mod tests {
         filter1.apply(10.0, 20.0);
         let (p, _y) = filter1.apply(20.0, 30.0);
         assert!((p - 19.0).abs() < 0.001); // 0.9 * 20 + 0.1 * 10
-        
+
         // Low alpha = more smoothing
         let mut filter2 = ExponentialFilter::new(0.1);
         filter2.apply(10.0, 20.0);
         let (p, _y) = filter2.apply(20.0, 30.0);
         assert!((p - 11.0).abs() < 0.001); // 0.1 * 20 + 0.9 * 10
     }
-    
+
     #[test]
     fn test_reset() {
         let mut filter = ExponentialFilter::new(0.5);
-        
+
         // Apply some values
         filter.apply(10.0, 20.0);
         filter.apply(20.0, 30.0);
-        
+
         // Reset should clear state
         filter.reset();
-        
+
         // Next value should pass through unchanged
         let (p, y) = filter.apply(100.0, 200.0);
         assert_eq!(p, 100.0);
