@@ -25,6 +25,10 @@ struct Args {
     /// Filter type for display (when cursor is not used)
     #[arg(short, long, default_value = "kalman")]
     filter: String,
+    
+    /// Show all filters for comparison
+    #[arg(long, default_value = "false")]
+    cursor_filter_all: bool,
 
     /// GUI display mode (all, pointers, cam, none)
     #[arg(short, long, default_value = "all")]
@@ -85,6 +89,7 @@ fn main() -> Result<()> {
             CursorMode::None
         },
         filter_type: args.filter,
+        show_all_filters: args.cursor_filter_all,
         gui_mode: match args.gui.as_str() {
             "all" => GuiMode::All,
             "pointers" => GuiMode::Pointers,

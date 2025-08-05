@@ -29,6 +29,8 @@ pub struct AppConfig {
     pub cursor_mode: CursorMode,
     /// Filter type for cursor smoothing
     pub filter_type: String,
+    /// Show all filters for comparison
+    pub show_all_filters: bool,
     /// GUI display mode
     pub gui_mode: GuiMode,
     /// Image inversion mode
@@ -120,6 +122,7 @@ pub struct HeadPoseApp {
     video_capture: VideoCapture,
     is_moving: bool,
     cursor_controller: Option<CursorController>,
+    all_filters: Option<Vec<(String, Box<dyn CursorFilter>, Scalar)>>,
 }
 
 impl HeadPoseApp {
@@ -165,6 +168,33 @@ impl HeadPoseApp {
         } else {
             None
         };
+        
+        // Initialize all filters if show_all_filters is enabled
+        let all_filters = if config.show_all_filters {
+            info!("Showing all filters for comparison");
+            let filter_configs = vec![
+                ("none", Scalar::new(255.0, 255.0, 255.0, 0.0)),      // White
+                ("kalman", Scalar::new(0.0, 255.0, 0.0, 0.0)),        // Green
+                ("median", Scalar::new(255.0, 0.0, 0.0, 0.0)),        // Blue
+                ("moving_average", Scalar::new(0.0, 255.0, 255.0, 0.0)), // Yellow
+                ("exponential", Scalar::new(255.0, 0.0, 255.0, 0.0)), // Magenta
+                ("lowpass", Scalar::new(0.0, 165.0, 255.0, 0.0)),     // Orange
+                ("lowpass2", Scalar::new(255.0, 100.0, 100.0, 0.0)),  // Light Blue
+                ("hampel", Scalar::new(100.0, 255.0, 100.0, 0.0)),    // Light Green
+            ];
+            
+            let mut filters = Vec::new();
+            for (name, color) in filter_configs {
+                match create_filter(name) {
+                    Ok(filter) => filters.push((name.to_string(), filter, color)),
+                    Err(e) => warn!("Failed to create {} filter: {}", name, e),
+                }
+            }
+            
+            Some(filters)
+        } else {
+            None
+        };
 
         // Initialize cursor filter and controller
         let (cursor_filter, cursor_controller) = match &config.cursor_mode {
@@ -207,6 +237,7 @@ impl HeadPoseApp {
             video_capture,
             is_moving: false,
             cursor_controller,
+            all_filters,
         })
     }
 
@@ -308,6 +339,7 @@ impl HeadPoseApp {
                 landmarks: Vec::new(),
                 poses: Vec::new(),
                 cursor_pos: None,
+                all_cursor_positions: None,
             });
         }
 
@@ -365,11 +397,19 @@ impl HeadPoseApp {
             None
         };
 
+        // Calculate all filter positions if enabled
+        let all_cursor_positions = if self.all_filters.is_some() && !poses.is_empty() {
+            self.calculate_all_cursor_positions(&poses[0])?
+        } else {
+            None
+        };
+        
         Ok(ProcessingResult {
             faces,
             landmarks,
             poses,
             cursor_pos,
+            all_cursor_positions,
         })
     }
 
@@ -430,6 +470,33 @@ impl HeadPoseApp {
         }
         
         Ok(Some((cursor_x, cursor_y)))
+    }
+
+    /// Calculate cursor positions for all filters
+    fn calculate_all_cursor_positions(&mut self, pose: &PoseData) -> Result<Option<Vec<(String, (f64, f64), Scalar)>>> {
+        if let Some(filters) = &mut self.all_filters {
+            let (raw_x, raw_y) = match self.config.data_source {
+                DataSource::PitchYaw => {
+                    let x = pose.yaw / 20.0;
+                    let y = -pose.pitch / 20.0;
+                    (x, y)
+                }
+                DataSource::NormalProjection => {
+                    // TODO: Implement normal projection
+                    (0.0, 0.0)
+                }
+            };
+            
+            let mut positions = Vec::new();
+            for (name, filter, color) in filters.iter_mut() {
+                let (x, y) = filter.apply(raw_x, raw_y);
+                positions.push((name.clone(), (x, y), *color));
+            }
+            
+            Ok(Some(positions))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Display results in GUI windows
@@ -558,8 +625,54 @@ impl HeadPoseApp {
         if self.config.gui_mode == GuiMode::All || self.config.gui_mode == GuiMode::Pointers {
             let mut cursor_frame = Mat::zeros(600, 800, CV_8UC3)?.to_mat()?;
             
-            // Draw cursor position if available
-            if let Some((x, y)) = result.cursor_pos {
+            // Draw all filter positions if available
+            if let Some(all_positions) = &result.all_cursor_positions {
+                // Draw legend
+                let mut legend_y = 20;
+                for (name, _, color) in all_positions {
+                    imgproc::put_text(
+                        &mut cursor_frame,
+                        name,
+                        Point::new(10, legend_y),
+                        FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        *color,
+                        1,
+                        LINE_8,
+                        false,
+                    )?;
+                    legend_y += 20;
+                }
+                
+                // Draw cursor positions
+                for (_name, (x, y), color) in all_positions {
+                    let cursor_x = ((x + 0.5) * 800.0) as i32;
+                    let cursor_y = ((y + 0.5) * 600.0) as i32;
+                    
+                    // Draw circle with alpha blending for overlapping cursors
+                    imgproc::circle(
+                        &mut cursor_frame,
+                        Point::new(cursor_x, cursor_y),
+                        8,
+                        *color,
+                        2,
+                        LINE_8,
+                        0,
+                    )?;
+                    
+                    // Draw filled circle with transparency effect
+                    imgproc::circle(
+                        &mut cursor_frame,
+                        Point::new(cursor_x, cursor_y),
+                        6,
+                        Scalar::new(color[0] * 0.5, color[1] * 0.5, color[2] * 0.5, 0.0),
+                        -1,
+                        LINE_8,
+                        0,
+                    )?;
+                }
+            } else if let Some((x, y)) = result.cursor_pos {
+                // Single cursor mode
                 let cursor_x = ((x + 0.5) * 800.0) as i32;
                 let cursor_y = ((y + 0.5) * 600.0) as i32;
                 
@@ -664,6 +777,7 @@ struct ProcessingResult {
     landmarks: Vec<Vec<opencv::core::Point2f>>,
     poses: Vec<PoseData>,
     cursor_pos: Option<(f64, f64)>,
+    all_cursor_positions: Option<Vec<(String, (f64, f64), Scalar)>>,
 }
 
 /// Pose estimation data
