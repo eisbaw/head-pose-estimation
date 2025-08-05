@@ -1,10 +1,11 @@
 use crate::{
     constants::{CAMERA_CENTER_FACTOR, MODEL_POINTS_TOTAL_VALUES, NUM_FACIAL_LANDMARKS},
-    Error, Result, utils::safe_cast::usize_to_i32
+    utils::safe_cast::usize_to_i32,
+    Error, Result,
 };
 use opencv::{
     calib3d,
-    core::{Mat, Point2f, Point3f, Vec3d},
+    core::{Mat, Point2f, Point2i, Point3f, Scalar, Vec3d},
     prelude::*,
 };
 use std::fs;
@@ -27,14 +28,20 @@ impl PoseEstimator {
     /// - The model file has an invalid format
     /// - OpenCV matrix operations fail
     pub fn new<P: AsRef<Path>>(model_path: P, image_width: i32, image_height: i32) -> Result<Self> {
-        log::info!("Initializing PoseEstimator with model: {}", model_path.as_ref().display());
+        log::info!(
+            "Initializing PoseEstimator with model: {}",
+            model_path.as_ref().display()
+        );
         // Load 3D model points from file
         let model_content = fs::read_to_string(model_path)?;
         let model_points = Self::parse_model_points(&model_content)?;
 
         // Initialize camera matrix with typical values
         let focal_length = f64::from(image_width);
-        let center = (f64::from(image_width) / CAMERA_CENTER_FACTOR, f64::from(image_height) / CAMERA_CENTER_FACTOR);
+        let center = (
+            f64::from(image_width) / CAMERA_CENTER_FACTOR,
+            f64::from(image_height) / CAMERA_CENTER_FACTOR,
+        );
 
         // Create camera matrix using zeros and then fill it
         let mut camera_matrix = Mat::zeros(3, 3, opencv::core::CV_64F)?.to_mat()?;
@@ -149,7 +156,7 @@ impl PoseEstimator {
             .lines()
             .filter_map(|line| line.trim().parse::<f32>().ok())
             .collect();
-        
+
         if values.len() != MODEL_POINTS_TOTAL_VALUES {
             return Err(Error::ModelValidationError(format!(
                 "Expected {} coordinate values ({} points × 3), got {}",
@@ -158,12 +165,12 @@ impl PoseEstimator {
                 values.len()
             )));
         }
-        
+
         let mut points = Vec::new();
         for i in (0..values.len()).step_by(3) {
             points.push(Point3f::new(values[i], values[i + 1], values[i + 2]));
         }
-        
+
         Ok(points)
     }
 
@@ -192,6 +199,125 @@ impl PoseEstimator {
 
         // Convert to degrees
         Ok(Vec3d::from([pitch.to_degrees(), yaw.to_degrees(), roll.to_degrees()]))
+    }
+    
+    /// Visualize pose by drawing a 3D box
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - OpenCV drawing operations fail
+    /// - Point projection fails
+    pub fn visualize(
+        &self,
+        image: &mut Mat,
+        rotation_vec: &Vec3d,
+        translation_vec: &Vec3d,
+        color: Scalar,
+        line_width: i32,
+    ) -> Result<()> {
+        // Define 3D box points
+        let mut point_3d = Vec::new();
+        
+        // Rear face (smaller, at origin)
+        let rear_size = 75.0;
+        let rear_depth = 0.0;
+        point_3d.push(Point3f::new(-rear_size, -rear_size, rear_depth));
+        point_3d.push(Point3f::new(-rear_size, rear_size, rear_depth));
+        point_3d.push(Point3f::new(rear_size, rear_size, rear_depth));
+        point_3d.push(Point3f::new(rear_size, -rear_size, rear_depth));
+        point_3d.push(Point3f::new(-rear_size, -rear_size, rear_depth)); // Close the rear face
+        
+        // Front face (larger, forward)
+        let front_size = 100.0;
+        let front_depth = 100.0;
+        point_3d.push(Point3f::new(-front_size, -front_size, front_depth));
+        point_3d.push(Point3f::new(-front_size, front_size, front_depth));
+        point_3d.push(Point3f::new(front_size, front_size, front_depth));
+        point_3d.push(Point3f::new(front_size, -front_size, front_depth));
+        point_3d.push(Point3f::new(-front_size, -front_size, front_depth)); // Close the front face
+        
+        // Convert to Mat for projectPoints
+        let object_points = Mat::from_slice(&point_3d)?;
+        
+        // Project 3D points to 2D
+        let mut image_points = Mat::default();
+        opencv::calib3d::project_points(
+            &object_points,
+            rotation_vec,
+            translation_vec,
+            &self.camera_matrix,
+            &self.dist_coeffs,
+            &mut image_points,
+            &mut Mat::default(),
+            0.0,
+        )?;
+        
+        // Convert projected points to Point2i for drawing
+        let mut points_2d = Vec::new();
+        for i in 0..10 {
+            let pt = image_points.at_2d::<opencv::core::Point2d>(i, 0)?;
+            points_2d.push(Point2i::new(pt.x as i32, pt.y as i32));
+        }
+        
+        // Draw the rear face using lines
+        for i in 0..4 {
+            let j = (i + 1) % 4;
+            opencv::imgproc::line(
+                image,
+                points_2d[i],
+                points_2d[j],
+                color,
+                line_width,
+                opencv::imgproc::LINE_AA,
+                0,
+            )?;
+        }
+        
+        // Draw the front face using lines
+        for i in 0..4 {
+            let j = (i + 1) % 4;
+            opencv::imgproc::line(
+                image,
+                points_2d[i + 5],
+                points_2d[j + 5],
+                color,
+                line_width,
+                opencv::imgproc::LINE_AA,
+                0,
+            )?;
+        }
+        
+        // Draw connecting lines between rear and front faces
+        opencv::imgproc::line(
+            image,
+            points_2d[1],
+            points_2d[6],
+            color,
+            line_width,
+            opencv::imgproc::LINE_AA,
+            0,
+        )?;
+        opencv::imgproc::line(
+            image,
+            points_2d[2],
+            points_2d[7],
+            color,
+            line_width,
+            opencv::imgproc::LINE_AA,
+            0,
+        )?;
+        opencv::imgproc::line(
+            image,
+            points_2d[3],
+            points_2d[8],
+            color,
+            line_width,
+            opencv::imgproc::LINE_AA,
+            0,
+        )?;
+        
+        Ok(())
     }
 }
 
@@ -225,11 +351,11 @@ mod tests {
         assert_eq!(points[0].x, 0.0);
         assert_eq!(points[0].y, 1.0);
         assert_eq!(points[0].z, 2.0);
-        
+
         // Wrong number of values
         let invalid_data = "1.0\n2.0\n3.0";
         assert!(PoseEstimator::parse_model_points(invalid_data).is_err());
-        
+
         // Empty data
         let empty_data = "";
         assert!(PoseEstimator::parse_model_points(empty_data).is_err());
@@ -247,12 +373,12 @@ mod tests {
         let invalid_data = values.join("\n");
         // This will have 203 valid values, not 204
         assert!(PoseEstimator::parse_model_points(&invalid_data).is_err());
-        
+
         // Too few values
         let wrong_count = (0..200).map(|i| format!("{}.0", i)).collect::<Vec<_>>().join("\n");
         assert!(PoseEstimator::parse_model_points(&wrong_count).is_err());
-        
-        // Too many values  
+
+        // Too many values
         let too_many = (0..205).map(|i| format!("{}.0", i)).collect::<Vec<_>>().join("\n");
         assert!(PoseEstimator::parse_model_points(&too_many).is_err());
     }

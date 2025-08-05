@@ -662,6 +662,17 @@ impl HeadPoseApp {
                         &pose.rotation_matrix,
                         &pose.translation_vec,
                     )?;
+                    
+                    // Draw 3D box visualization
+                    if self.config.display.debug {
+                        self.pose_estimator.visualize(
+                            &mut display_frame,
+                            &pose.rotation_vec,
+                            &pose.translation_vec,
+                            Scalar::new(0.0, 255.0, 255.0, 0.0), // Cyan color
+                            2,
+                        )?;
+                    }
 
                     // Draw normal vector when using normal projection
                     if matches!(self.config.data_source, DataSource::NormalProjection) {
