@@ -8,6 +8,12 @@ pub struct ExponentialFilter {
 }
 
 impl ExponentialFilter {
+    /// Create a new exponential filter
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if alpha is not in the range (0, 1]
+    #[must_use]
     pub fn new(alpha: f64) -> Self {
         assert!(alpha > 0.0 && alpha <= 1.0, "Alpha must be in (0, 1]");
         Self {
@@ -21,12 +27,12 @@ impl ExponentialFilter {
 impl CursorFilter for ExponentialFilter {
     fn apply(&mut self, pitch: f64, yaw: f64) -> (f64, f64) {
         let filtered_pitch = match self.last_pitch {
-            Some(last) => self.alpha * pitch + (1.0 - self.alpha) * last,
+            Some(last) => self.alpha.mul_add(pitch, (1.0 - self.alpha) * last),
             None => pitch,
         };
         
         let filtered_yaw = match self.last_yaw {
-            Some(last) => self.alpha * yaw + (1.0 - self.alpha) * last,
+            Some(last) => self.alpha.mul_add(yaw, (1.0 - self.alpha) * last),
             None => yaw,
         };
         

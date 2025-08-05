@@ -21,6 +21,8 @@ type Matrix2x4<T> = nalgebra::Matrix<T, nalgebra::U2, nalgebra::U4, nalgebra::Ar
 type Matrix4x2<T> = nalgebra::Matrix<T, nalgebra::U4, nalgebra::U2, nalgebra::ArrayStorage<T, 4, 2>>;
 
 impl KalmanFilter {
+    /// Create a new Kalman filter
+    #[must_use]
     pub fn new() -> Self {
         let dt: f64 = 1.0 / 30.0; // Assume 30 FPS
         

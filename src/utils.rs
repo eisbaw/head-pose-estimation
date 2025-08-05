@@ -1,9 +1,11 @@
+//! Utility functions for image processing and coordinate transformations.
+
 use opencv::core::Rect;
 use crate::Result;
 
 /// Refine bounding boxes to ensure they are within image boundaries
 /// 
-/// This is a port of the Python refine() function from utils.py
+/// This is a port of the Python `refine()` function from utils.py
 pub fn refine_boxes(boxes: &mut [Rect], max_width: i32, max_height: i32, shift: f32) -> Result<()> {
     for bbox in boxes.iter_mut() {
         let x_shift = (bbox.width as f32 * shift) as i32;

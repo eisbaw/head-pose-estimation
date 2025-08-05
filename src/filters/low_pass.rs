@@ -8,6 +8,12 @@ pub struct LowPassFilter {
 }
 
 impl LowPassFilter {
+    /// Create a new first-order low-pass filter
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if alpha is not in the range (0, 1]
+    #[must_use]
     pub fn new(alpha: f64) -> Self {
         assert!(alpha > 0.0 && alpha <= 1.0, "Alpha must be in (0, 1]");
         Self {
@@ -21,12 +27,12 @@ impl LowPassFilter {
 impl CursorFilter for LowPassFilter {
     fn apply(&mut self, pitch: f64, yaw: f64) -> (f64, f64) {
         let filtered_pitch = match self.last_pitch {
-            Some(last) => last + self.alpha * (pitch - last),
+            Some(last) => self.alpha.mul_add(pitch - last, last),
             None => pitch,
         };
         
         let filtered_yaw = match self.last_yaw {
-            Some(last) => last + self.alpha * (yaw - last),
+            Some(last) => self.alpha.mul_add(yaw - last, last),
             None => yaw,
         };
         
@@ -66,6 +72,8 @@ pub struct SecondOrderLowPassFilter {
 }
 
 impl SecondOrderLowPassFilter {
+    /// Create a new second-order low-pass filter
+    #[must_use]
     pub fn new(cutoff_freq: f64, damping: f64) -> Self {
         let dt = 1.0 / 30.0; // Assume 30 FPS
         
@@ -83,6 +91,7 @@ impl SecondOrderLowPassFilter {
         }
     }
     
+    #[allow(clippy::suspicious_operation_groupings)]
     fn update_state(
         x: &mut f64,
         dx: &mut f64,
@@ -93,7 +102,8 @@ impl SecondOrderLowPassFilter {
         dt: f64,
     ) -> f64 {
         // Calculate acceleration
-        *ddx = omega * omega * (input - *x) - 2.0 * zeta * omega * *dx;
+        // omega² * (input - position) - 2 * zeta * omega * velocity
+        *ddx = (omega * omega).mul_add(input - *x, -(2.0 * zeta * omega * *dx));
         
         // Update velocity and position
         *dx += *ddx * dt;

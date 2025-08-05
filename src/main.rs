@@ -1,7 +1,7 @@
+//! Head pose estimation application for real-time tracking and cursor control.
+
 use clap::Parser;
-use env_logger;
 use log::{info, error};
-use head_pose_estimation::Result;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -18,7 +18,7 @@ struct Args {
     #[arg(short, long, default_value = "none")]
     mode: String,
     
-    /// Filter type (none, kalman, moving_average, median, exponential, lowpass, lowpass2, hampel)
+    /// Filter type (none, kalman, `moving_average`, median, exponential, lowpass, lowpass2, hampel)
     #[arg(short, long, default_value = "kalman")]
     filter: String,
     
@@ -35,7 +35,7 @@ struct Args {
     debug: bool,
 }
 
-fn main() -> Result<()> {
+fn main() {
     // Parse command line arguments
     let args = Args::parse();
     
@@ -60,6 +60,4 @@ fn main() -> Result<()> {
     // - Start main loop
     
     error!("Implementation not complete yet");
-    
-    Ok(())
 }

@@ -9,6 +9,8 @@ pub struct MedianFilter {
 }
 
 impl MedianFilter {
+    /// Create a new median filter
+    #[must_use]
     pub fn new(window_size: usize) -> Self {
         Self {
             window_size,
@@ -18,7 +20,7 @@ impl MedianFilter {
     }
     
     fn calculate_median(values: &VecDeque<f64>) -> f64 {
-        let mut sorted: Vec<f64> = values.iter().cloned().collect();
+        let mut sorted: Vec<f64> = values.iter().copied().collect();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         
         let len = sorted.len();

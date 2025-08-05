@@ -9,6 +9,8 @@ pub struct MovingAverageFilter {
 }
 
 impl MovingAverageFilter {
+    /// Create a new moving average filter
+    #[must_use]
     pub fn new(window_size: usize) -> Self {
         Self {
             window_size,

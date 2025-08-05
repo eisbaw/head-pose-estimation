@@ -7,7 +7,7 @@ use std::path::Path;
 use std::fs;
 use crate::{Result, Error};
 
-/// Head pose estimator using PnP algorithm
+/// Head pose estimator using `PnP` algorithm
 pub struct PoseEstimator {
     model_points: Vec<Point3f>,
     camera_matrix: Mat,
@@ -22,8 +22,8 @@ impl PoseEstimator {
         let model_points = Self::parse_model_points(&model_content)?;
         
         // Initialize camera matrix with typical values
-        let focal_length = image_width as f64;
-        let center = (image_width as f64 / 2.0, image_height as f64 / 2.0);
+        let focal_length = f64::from(image_width);
+        let center = (f64::from(image_width) / 2.0, f64::from(image_height) / 2.0);
         
         // Create camera matrix using zeros and then fill it
         let mut camera_matrix = Mat::zeros(3, 3, opencv::core::CV_64F)?.to_mat()?;

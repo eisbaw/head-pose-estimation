@@ -1,3 +1,8 @@
+//! Movement detection module for tracking head movement patterns.
+//! 
+//! This module provides statistical analysis of head pose angles over time
+//! to detect when the head is moving or stationary.
+
 use std::collections::VecDeque;
 
 /// Movement detector using statistical analysis
@@ -10,6 +15,7 @@ pub struct MovementDetector {
 
 impl MovementDetector {
     /// Create a new movement detector
+    #[must_use]
     pub fn new(window_size: usize, movement_threshold: f64) -> Self {
         Self {
             window_size,
@@ -38,8 +44,8 @@ impl MovementDetector {
         }
         
         // Calculate statistics
-        let pitch_stats = self.calculate_stats(&self.pitch_history);
-        let yaw_stats = self.calculate_stats(&self.yaw_history);
+        let pitch_stats = Self::calculate_stats(&self.pitch_history);
+        let yaw_stats = Self::calculate_stats(&self.yaw_history);
         
         // Check if moving based on standard deviation
         pitch_stats.std_dev > self.movement_threshold || 
@@ -53,8 +59,8 @@ impl MovementDetector {
         }
         
         Some((
-            self.calculate_stats(&self.pitch_history),
-            self.calculate_stats(&self.yaw_history),
+            Self::calculate_stats(&self.pitch_history),
+            Self::calculate_stats(&self.yaw_history),
         ))
     }
     
@@ -65,7 +71,7 @@ impl MovementDetector {
     }
     
     /// Calculate statistics for a data window
-    fn calculate_stats(&self, data: &VecDeque<f64>) -> Statistics {
+    fn calculate_stats(data: &VecDeque<f64>) -> Statistics {
         let n = data.len() as f64;
         let mean = data.iter().sum::<f64>() / n;
         
@@ -75,8 +81,8 @@ impl MovementDetector {
             
         let std_dev = variance.sqrt();
         
-        let min = data.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let min = data.iter().copied().fold(f64::INFINITY, f64::min);
+        let max = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
         let range = max - min;
         
         Statistics {
@@ -89,12 +95,18 @@ impl MovementDetector {
     }
 }
 
+/// Statistical summary of a data window
 #[derive(Debug, Clone, Copy)]
 pub struct Statistics {
+    /// Mean value of the data
     pub mean: f64,
+    /// Standard deviation of the data
     pub std_dev: f64,
+    /// Minimum value in the window
     pub min: f64,
+    /// Maximum value in the window
     pub max: f64,
+    /// Range (max - min) of the data
     pub range: f64,
 }
 
@@ -126,10 +138,9 @@ mod tests {
     
     #[test]
     fn test_statistics_calculation() {
-        let detector = MovementDetector::new(5, 2.0);
         let data = VecDeque::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
         
-        let stats = detector.calculate_stats(&data);
+        let stats = MovementDetector::calculate_stats(&data);
         assert_eq!(stats.mean, 3.0);
         assert_eq!(stats.min, 1.0);
         assert_eq!(stats.max, 5.0);

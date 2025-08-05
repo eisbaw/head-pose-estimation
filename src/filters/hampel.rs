@@ -10,6 +10,12 @@ pub struct HampelFilter {
 }
 
 impl HampelFilter {
+    /// Create a new Hampel filter
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if window_size is not odd
+    #[must_use]
     pub fn new(window_size: usize, threshold: f64) -> Self {
         assert!(window_size % 2 == 1, "Window size must be odd");
         Self {
@@ -26,7 +32,7 @@ impl HampelFilter {
         }
         
         // Calculate median
-        let mut sorted: Vec<f64> = values.iter().cloned().collect();
+        let mut sorted: Vec<f64> = values.iter().copied().collect();
         sorted.push(new_value);
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         

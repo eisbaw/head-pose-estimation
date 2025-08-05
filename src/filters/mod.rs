@@ -1,8 +1,24 @@
+//! Signal filtering algorithms for smoothing pose estimates.
+//! 
+//! This module provides various filtering algorithms to smooth noisy
+//! head pose angle measurements, reducing jitter and improving stability.
+
+/// Kalman filter implementation for optimal state estimation
 pub mod kalman;
+
+/// Moving average filter for simple smoothing
 pub mod moving_average;
+
+/// Median filter for outlier rejection
 pub mod median;
+
+/// Exponential filter for responsive smoothing
 pub mod exponential;
+
+/// Low-pass filters (first and second order) for frequency-based smoothing
 pub mod low_pass;
+
+/// Hampel filter for robust outlier detection and smoothing
 pub mod hampel;
 
 use crate::Result;
@@ -45,7 +61,7 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
         "lowpass" | "low_pass" => Ok(Box::new(low_pass::LowPassFilter::new(0.5))),
         "lowpass2" | "low_pass2" => Ok(Box::new(low_pass::SecondOrderLowPassFilter::new(30.0, 0.707))),
         "hampel" => Ok(Box::new(hampel::HampelFilter::new(5, 3.0))),
-        _ => Err(crate::Error::FilterError(format!("Unknown filter type: {}", filter_type))),
+        _ => Err(crate::Error::FilterError(format!("Unknown filter type: {filter_type}"))),
     }
 }
 
