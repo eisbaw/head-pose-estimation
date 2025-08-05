@@ -349,14 +349,14 @@ approx = "0.5"
 ## Code Smells Found by Clippy (New)
 
 ### Critical Issues
-- [ ] Fix many usize to i32 casts that may wrap on 32-bit systems
-- [ ] Fix u16 to i16 casts that may wrap
-- [ ] Fix complex type in face_detection forward() return type
-- [ ] Replace manual range loops with iterators
+- [x] DONE: Fix many usize to i32 casts that may wrap on 32-bit systems
+- [x] DONE: Fix u16 to i16 casts that may wrap
+- [x] DONE: Fix complex type in face_detection forward() return type
+- [x] DONE: Replace manual range loops with iterators
 
 ### Medium Priority
-- [ ] Use inline format variables instead of positional parameters
-- [ ] Derive Eq for enums that derive PartialEq  
+- [x] DONE: Use inline format variables instead of positional parameters
+- [x] DONE: Derive Eq for enums that derive PartialEq  
 - [ ] Make const-eligible functions const
 - [ ] Use f64::from() for lossless casts
 - [ ] Remove unused self parameters or refactor to associated functions
@@ -366,11 +366,43 @@ approx = "0.5"
 - [ ] Replace Vec<u8> allocation with iterators in face detection
 - [ ] Use slice patterns instead of indexing
 - [ ] Consider SmallVec for small collections
-- [ ] Avoid unnecessary clones with .copied()
+- [x] DONE: Avoid unnecessary clones with .copied()
 
 ### Code Quality
-- [ ] Add error context instead of generic "Failed to X" messages
+- [x] DONE: Add error context instead of generic "Failed to X" messages
 - [ ] Use more specific error types
 - [ ] Document panics in public APIs
 - [ ] Add examples to public functions
-- [ ] Use type aliases for complex types
+- [x] DONE: Use type aliases for complex types
+
+## New Code Quality Issues Found (2025-08-05)
+
+### Error Handling Improvements
+- [ ] Create domain-specific error variants instead of generic ModelError
+- [ ] Add error recovery strategies for non-fatal errors
+- [ ] Implement retry logic for transient failures
+- [ ] Add structured logging with error codes
+
+### Code Organization
+- [ ] Split large modules (app.rs, face_detection.rs) into smaller files
+- [ ] Extract constants to a dedicated configuration module
+- [ ] Create trait for video sources (webcam, file, stream)
+- [ ] Implement builder pattern for complex structs
+
+### Documentation
+- [ ] Add comprehensive examples in lib.rs
+- [ ] Document performance characteristics of filters
+- [ ] Add architecture diagram in README
+- [ ] Create migration guide from Python version
+
+### Testing Gaps
+- [ ] Add property-based tests for numeric conversions
+- [ ] Test edge cases for safe_cast functions
+- [ ] Add fuzz testing for ONNX model inputs
+- [ ] Create benchmarks for critical paths
+
+### Performance Optimization Opportunities
+- [ ] Investigate SIMD for filter calculations
+- [ ] Profile memory allocations in hot paths
+- [ ] Consider pre-allocating buffers for video frames
+- [ ] Optimize anchor center generation with const evaluation
