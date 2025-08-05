@@ -263,7 +263,7 @@ approx = "0.5"
 - [x] DONE: Implement main application loop
 - [x] DONE: Implement video capture from webcam
 - [x] DONE: Implement video capture from file
-- [ ] Implement cursor control (X11)
+- [x] DONE: Implement cursor control (X11)
 - [x] DONE: Implement GUI visualization
 - [ ] Implement filter mode switching
 - [ ] Implement debug overlay
