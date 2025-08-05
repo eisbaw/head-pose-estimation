@@ -60,6 +60,14 @@ pub enum Error {
     /// Cursor control operation failed
     #[error("Cursor control error: {0}")]
     CursorControl(String),
+
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+
+    /// Generic I/O error with description
+    #[error("I/O error: {0}")]
+    IoError(String),
 }
 
 /// Application-specific error type (alias for main Error type)

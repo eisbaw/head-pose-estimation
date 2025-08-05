@@ -10,8 +10,14 @@ pub struct MedianFilter {
 
 impl MedianFilter {
     /// Create a new median filter
+    ///
+    /// # Panics
+    ///
+    /// Panics if window_size is 0 or even (median filter requires odd window size)
     #[must_use]
     pub fn new(window_size: usize) -> Self {
+        assert!(window_size > 0, "Window size must be greater than 0");
+        assert!(window_size % 2 == 1, "Median filter window size must be odd, got {}", window_size);
         Self {
             window_size,
             pitch_buffer: VecDeque::with_capacity(window_size),
@@ -21,7 +27,14 @@ impl MedianFilter {
 
     fn calculate_median(values: &VecDeque<f64>) -> f64 {
         let mut sorted: Vec<f64> = values.iter().copied().collect();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        sorted.sort_by(|a, b| {
+            match (a.is_finite(), b.is_finite()) {
+                (true, true) => a.partial_cmp(b).unwrap(),
+                (true, false) => std::cmp::Ordering::Less,  // finite values come before non-finite
+                (false, true) => std::cmp::Ordering::Greater,
+                (false, false) => std::cmp::Ordering::Equal,
+            }
+        });
 
         let len = sorted.len();
         if len == 0 {

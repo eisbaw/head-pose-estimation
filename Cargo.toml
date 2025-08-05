@@ -21,6 +21,7 @@ nalgebra = "0.33"
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_yaml = "0.9"
 
 # Error Handling and Logging
 anyhow = "1.0"
@@ -42,9 +43,14 @@ once_cell = "1.20"
 criterion = "0.5"
 approx = "0.5"
 proptest = "1.4"
+rand = "0.8"
 
 [[bench]]
-name = "performance"
+name = "filter_benchmarks"
+harness = false
+
+[[bench]]
+name = "pose_estimation_benchmarks"
 harness = false
 
 [lints.rust]

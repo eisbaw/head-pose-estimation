@@ -10,7 +10,7 @@
 - [x] DONE: Set up error handling with anyhow/thiserror
 - [x] DONE: Configure logging with env_logger
 - [ ] Create build script for system dependency detection
-- [ ] Set up CI/CD pipeline (GitHub Actions)
+- [x] DONE: Set up CI/CD pipeline (GitHub Actions)
 - [x] DONE: Add rustfmt.toml and clippy configuration (in Cargo.toml)
 
 ### Week 2: Core Infrastructure
@@ -20,7 +20,7 @@
 - [ ] Implement basic geometry helpers
 - [x] DONE: Create trait for cursor filters
 - [ ] Set up ONNX Runtime initialization
-- [ ] Add configuration struct for application settings
+- [x] DONE: Add configuration struct for application settings
 - [x] DONE: Implement command-line argument parsing with clap
 
 ## Phase 2: ONNX Model Integration
@@ -76,7 +76,7 @@
 - [x] DONE: Implement SecondOrderLowPassFilter
 - [x] DONE: Implement HampelFilter
 - [ ] Optimize filter performance
-- [ ] Add benchmarks for filters
+- [x] DONE: Add benchmarks for filters
 - [ ] Ensure numerical accuracy matches Python
 
 ## Phase 5: Application Features
@@ -136,10 +136,10 @@
 - [ ] Create test suite for cursor control
 
 ### Week 13: Polish and Documentation
-- [ ] Write comprehensive README
-- [ ] Add inline documentation
-- [ ] Create usage examples
-- [ ] Document build instructions
+- [x] DONE: Write comprehensive README
+- [x] DONE: Add inline documentation
+- [x] DONE: Create usage examples
+- [x] DONE: Document build instructions
 - [ ] Add troubleshooting guide
 - [ ] Create migration guide from Python
 - [ ] Package for distribution
@@ -160,7 +160,7 @@
 - [ ] Implement frame skipping for low-end hardware
 
 ### Additional Features
-- [ ] Add configuration file support
+- [x] DONE: Add configuration file support
 - [ ] Implement filter parameter tuning UI
 - [ ] Add recording/playback functionality
 - [ ] Create headless mode for servers
@@ -190,7 +190,7 @@
 - [ ] Test with different video resolutions
 
 ### Compatibility Tests
-- [ ] Test with original ONNX models
+- [x] DONE: Test with original ONNX models
 - [ ] Test all command-line arguments
 - [ ] Test filter output accuracy
 - [ ] Test on different Linux distributions

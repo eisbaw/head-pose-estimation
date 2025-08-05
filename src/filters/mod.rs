@@ -94,6 +94,9 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
                 if val == 0 {
                     return Err(crate::Error::FilterError("Window size must be greater than 0".to_string()));
                 }
+                if val % 2 == 0 {
+                    return Err(crate::Error::FilterError(format!("Median filter window size must be odd, got {}", val)));
+                }
                 val
             } else {
                 5

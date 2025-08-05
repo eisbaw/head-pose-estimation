@@ -14,10 +14,12 @@ impl HampelFilter {
     ///
     /// # Panics
     ///
-    /// Panics if `window_size` is not odd
+    /// Panics if `window_size` is not odd or is zero, or if threshold is negative
     #[must_use]
     pub fn new(window_size: usize, threshold: f64) -> Self {
-        assert!(window_size % 2 == 1, "Window size must be odd");
+        assert!(window_size > 0, "Window size must be greater than 0");
+        assert!(window_size % 2 == 1, "Window size must be odd, got {}", window_size);
+        assert!(threshold >= 0.0, "Threshold must be non-negative, got {}", threshold);
         Self {
             window_size,
             threshold,

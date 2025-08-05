@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release binaries
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: head-pose-estimation-linux-amd64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: head-pose-estimation-linux-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
+    
+    - name: Install system dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libopencv-dev \
+          libclang-dev \
+          libx11-dev \
+          libxcb1-dev \
+          libxcb-render0-dev \
+          libxcb-shape0-dev \
+          libxcb-xfixes0-dev \
+          pkg-config
+        
+        # For cross-compilation to aarch64
+        if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+        fi
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+    
+    - name: Build
+      run: |
+        if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+          export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+        fi
+        cargo build --release --target ${{ matrix.target }}
+    
+    - name: Prepare release
+      run: |
+        mkdir -p release
+        cp target/${{ matrix.target }}/release/head-pose-estimation release/${{ matrix.name }}
+        cp -r assets release/
+        cp README.md LICENSE release/
+        tar -czf ${{ matrix.name }}.tar.gz -C release .
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.name }}
+        path: ${{ matrix.name }}.tar.gz
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          head-pose-estimation-linux-amd64/*.tar.gz
+          head-pose-estimation-linux-arm64/*.tar.gz
+        draft: false
+        prerelease: false
+        generate_release_notes: true

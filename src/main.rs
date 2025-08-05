@@ -61,6 +61,10 @@ struct Args {
     /// Use relative cursor control (hold 'w' key to activate)
     #[arg(long)]
     cursor_relative: bool,
+
+    /// Path to configuration file (YAML format)
+    #[arg(short = 'C', long)]
+    config: Option<String>,
 }
 
 fn main() -> Result<()> {
@@ -75,6 +79,20 @@ fn main() -> Result<()> {
     }
 
     info!("Head Pose Estimation - Rust Port");
+
+    // Load configuration if provided
+    let mut config_file = if let Some(config_path) = &args.config {
+        info!("Loading configuration from: {}", config_path);
+        match head_pose_estimation::config::Config::from_file(config_path) {
+            Ok(cfg) => Some(cfg),
+            Err(e) => {
+                log::warn!("Failed to load config file: {}. Using defaults.", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
 
     // Build application configuration
     let config = AppConfig {

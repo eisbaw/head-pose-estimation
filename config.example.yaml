@@ -1,0 +1,53 @@
+# Head Pose Estimation Configuration
+
+# Model paths
+models:
+  face_detector: "assets/face_detector.onnx"
+  face_landmarks: "assets/face_landmarks.onnx"
+  face_model_3d: "assets/model.txt"
+
+# Face detection parameters
+face_detection:
+  confidence_threshold: 0.6
+  iou_threshold: 0.5
+  max_faces: 10
+  bbox_expansion: 0.25
+
+# Filter configuration
+filter:
+  default_filter: "moving_average"
+  moving_average_window: 5
+  median_window: 5
+  exponential_alpha: 0.5
+  low_pass_alpha: 0.3
+  second_order_cutoff: 10.0
+  second_order_damping: 0.7
+  hampel_window: 7
+  hampel_threshold: 3.0
+
+# Display settings
+display:
+  target_fps: 30
+  window_width: 640
+  window_height: 480
+  gui_mode: "all"
+  show_filters: false
+  flip_x: false
+  flip_y: false
+  brightness: 0
+
+# Cursor control
+cursor:
+  enabled: true
+  invert_x: false
+  invert_y: false
+  amplify_x: 3.0
+  amplify_y: 3.0
+  use_normal_vector: false
+  default_mode: "absolute"
+
+# Movement detection
+movement:
+  window_size: 30
+  std_dev_threshold: 0.5
+  movement_based_control: false

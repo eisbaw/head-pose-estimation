@@ -215,4 +215,7 @@ pub mod cursor_control;
 /// Constants used throughout the application
 pub mod constants;
 
+/// Configuration management
+pub mod config;
+
 pub use error::{Error, Result};

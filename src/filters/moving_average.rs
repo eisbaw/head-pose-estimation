@@ -10,8 +10,13 @@ pub struct MovingAverageFilter {
 
 impl MovingAverageFilter {
     /// Create a new moving average filter
+    ///
+    /// # Panics
+    ///
+    /// Panics if window_size is 0
     #[must_use]
     pub fn new(window_size: usize) -> Self {
+        assert!(window_size > 0, "Window size must be greater than 0");
         Self {
             window_size,
             pitch_buffer: VecDeque::with_capacity(window_size),
