@@ -148,4 +148,22 @@ mod tests {
         assert!(p2 > 10.0 && p2 < 11.0);
         assert!(y2 > 20.0 && y2 < 21.0);
     }
+    
+    #[test]
+    fn test_reset() {
+        let mut filter = KalmanFilter::new();
+        
+        // Apply some values to change state
+        filter.apply(10.0, 20.0);
+        filter.apply(15.0, 25.0);
+        filter.apply(20.0, 30.0);
+        
+        // Reset should reinitialize the filter
+        filter.reset();
+        
+        // Next measurement should behave like the first measurement
+        let (p, y) = filter.apply(100.0, 200.0);
+        assert!((p - 100.0).abs() < 1.0);
+        assert!((y - 200.0).abs() < 1.0);
+    }
 }

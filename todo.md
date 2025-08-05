@@ -245,9 +245,9 @@ approx = "0.5"
 - [x] DONE: Fix unsafe code warnings in pose_estimation.rs
 - [x] DONE: Fix dead code warnings (unused struct fields)
 - [x] DONE: Fix unused imports and variables warnings
-- [ ] Add missing documentation for all public items
-- [ ] Add comprehensive module-level documentation
-- [ ] Document error types and their meanings
+- [x] DONE: Add missing documentation for all public items
+- [x] DONE: Add comprehensive module-level documentation
+- [x] DONE: Document error types and their meanings
 
 ### Implementation TODOs
 - [ ] Implement ONNX model loading in FaceDetector::new
@@ -278,25 +278,25 @@ approx = "0.5"
 
 ### High Priority
 - [ ] Fix potential panic in KalmanFilter matrix inversion (use proper error handling)
-- [ ] Fix suspicious operation grouping in SecondOrderLowPassFilter (line 96)
+- [x] DONE: Fix suspicious operation grouping in SecondOrderLowPassFilter (line 96)
 - [ ] Add proper error handling for all unwrap() calls in tests
 - [ ] Handle partial_cmp unwrap calls in sort operations
 
 ### Medium Priority
-- [ ] Fix clippy lint group priorities in Cargo.toml
-- [ ] Add #[must_use] to constructors that return Self
-- [ ] Use f64::from() instead of as f64 for lossless casts
-- [ ] Use .copied() instead of .cloned() for f64 values
-- [ ] Use mul_add for better floating point accuracy
-- [ ] Add # Panics sections to functions that can panic
+- [x] DONE: Fix clippy lint group priorities in Cargo.toml
+- [x] DONE: Add #[must_use] to constructors that return Self
+- [x] DONE: Use f64::from() instead of as f64 for lossless casts
+- [x] DONE: Use .copied() instead of .cloned() for f64 values
+- [x] DONE: Use mul_add for better floating point accuracy
+- [x] DONE: Add # Panics sections to functions that can panic
 
 ### Low Priority
-- [ ] Make movement_detector::calculate_stats an associated function
-- [ ] Add backticks to documentation (PnP, refine())
-- [ ] Use format! with inline variables
+- [x] DONE: Make movement_detector::calculate_stats an associated function
+- [x] DONE: Add backticks to documentation (PnP, refine())
+- [x] DONE: Use format! with inline variables
 - [ ] Consider making placeholder detect() functions const
-- [ ] Remove redundant import in main.rs
-- [ ] Consider removing Result return from main()
+- [x] DONE: Remove redundant import in main.rs
+- [x] DONE: Consider removing Result return from main()
 
 ## Missing Tests
 

@@ -85,4 +85,21 @@ mod tests {
         let (p, _y) = filter2.apply(20.0, 30.0);
         assert!((p - 11.0).abs() < 0.001); // 0.1 * 20 + 0.9 * 10
     }
+    
+    #[test]
+    fn test_reset() {
+        let mut filter = ExponentialFilter::new(0.5);
+        
+        // Apply some values
+        filter.apply(10.0, 20.0);
+        filter.apply(20.0, 30.0);
+        
+        // Reset should clear state
+        filter.reset();
+        
+        // Next value should pass through unchanged
+        let (p, y) = filter.apply(100.0, 200.0);
+        assert_eq!(p, 100.0);
+        assert_eq!(y, 200.0);
+    }
 }

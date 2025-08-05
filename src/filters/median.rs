@@ -21,7 +21,7 @@ impl MedianFilter {
     
     fn calculate_median(values: &VecDeque<f64>) -> f64 {
         let mut sorted: Vec<f64> = values.iter().copied().collect();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         
         let len = sorted.len();
         if len == 0 {

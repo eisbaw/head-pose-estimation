@@ -34,7 +34,7 @@ impl HampelFilter {
         // Calculate median
         let mut sorted: Vec<f64> = values.iter().copied().collect();
         sorted.push(new_value);
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         
         let median = if sorted.len() % 2 == 0 {
             (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
@@ -46,7 +46,7 @@ impl HampelFilter {
         let mut deviations: Vec<f64> = sorted.iter()
             .map(|&x| (x - median).abs())
             .collect();
-        deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        deviations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         
         let mad = if deviations.len() % 2 == 0 {
             (deviations[deviations.len() / 2 - 1] + deviations[deviations.len() / 2]) / 2.0

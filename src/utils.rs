@@ -54,4 +54,50 @@ mod tests {
         // Second box should also be square
         assert_eq!(boxes[1].width, boxes[1].height);
     }
+    
+    #[test]
+    fn test_refine_boxes_empty() {
+        let mut boxes = vec![];
+        
+        // Should handle empty input without panic
+        refine_boxes(&mut boxes, 200, 200, 0.1).unwrap();
+        assert!(boxes.is_empty());
+    }
+    
+    #[test]
+    fn test_refine_boxes_edge_boundaries() {
+        let mut boxes = vec![
+            // Box at edge of image
+            Rect::new(190, 190, 20, 20),
+            // Box that would exceed boundaries after expansion
+            Rect::new(0, 0, 10, 10),
+        ];
+        
+        refine_boxes(&mut boxes, 200, 200, 0.5).unwrap();
+        
+        // Boxes should not exceed image boundaries
+        for bbox in &boxes {
+            assert!(bbox.x >= 0);
+            assert!(bbox.y >= 0);
+            assert!(bbox.x + bbox.width <= 200);
+            assert!(bbox.y + bbox.height <= 200);
+            // Should still be square
+            assert_eq!(bbox.width, bbox.height);
+        }
+    }
+    
+    #[test]
+    fn test_refine_boxes_negative_shift() {
+        let mut boxes = vec![
+            Rect::new(50, 50, 40, 40),
+        ];
+        
+        // Negative shift should still work (though unusual)
+        refine_boxes(&mut boxes, 200, 200, -0.1).unwrap();
+        
+        // Box should be contracted but still valid
+        assert!(boxes[0].width > 0);
+        assert!(boxes[0].height > 0);
+        assert_eq!(boxes[0].width, boxes[0].height);
+    }
 }
