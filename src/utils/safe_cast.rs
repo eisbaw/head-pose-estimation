@@ -8,10 +8,9 @@ use crate::{Error, Result};
 ///
 /// Returns an error if the value exceeds i32::MAX
 pub fn usize_to_i32(value: usize) -> Result<i32> {
-    value.try_into()
-        .map_err(|_| Error::InvalidInput(format!(
-            "Value {value} too large to fit in i32"
-        )))
+    value
+        .try_into()
+        .map_err(|_| Error::InvalidInput(format!("Value {value} too large to fit in i32")))
 }
 
 /// Safely convert u32 to i32 with overflow checking
@@ -20,10 +19,9 @@ pub fn usize_to_i32(value: usize) -> Result<i32> {
 ///
 /// Returns an error if the value exceeds i32::MAX
 pub fn u32_to_i32(value: u32) -> Result<i32> {
-    value.try_into()
-        .map_err(|_| Error::InvalidInput(format!(
-            "Value {value} too large to fit in i32"
-        )))
+    value
+        .try_into()
+        .map_err(|_| Error::InvalidInput(format!("Value {value} too large to fit in i32")))
 }
 
 /// Safely convert f32 to i32 with bounds checking
@@ -66,14 +64,14 @@ pub fn f64_to_i32(value: f64) -> Result<i32> {
 pub fn f32_to_i32_clamp(value: f32, min: i32, max: i32) -> i32 {
     // Ensure min <= max
     let (min, max) = if min <= max { (min, max) } else { (max, min) };
-    
+
     if !value.is_finite() {
         return min;
     }
-    
+
     // Convert bounds to f32 and clamp
     let clamped = value.clamp(min as f32, max as f32);
-    
+
     // Ensure result is within bounds after conversion
     let result = clamped as i32;
     result.clamp(min, max)
@@ -83,31 +81,31 @@ pub fn f32_to_i32_clamp(value: f32, min: i32, max: i32) -> i32 {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-    
+
     #[test]
     fn test_usize_to_i32() {
         assert_eq!(usize_to_i32(42).unwrap(), 42);
         assert_eq!(usize_to_i32(0).unwrap(), 0);
         assert_eq!(usize_to_i32(i32::MAX as usize).unwrap(), i32::MAX);
-        
+
         // On 64-bit systems, this should fail
         if std::mem::size_of::<usize>() > 4 {
             assert!(usize_to_i32(i32::MAX as usize + 1).is_err());
         }
     }
-    
+
     #[test]
     fn test_f32_to_i32() {
         assert_eq!(f32_to_i32(42.0).unwrap(), 42);
         assert_eq!(f32_to_i32(-42.0).unwrap(), -42);
         assert_eq!(f32_to_i32(0.0).unwrap(), 0);
-        
+
         assert!(f32_to_i32(f32::INFINITY).is_err());
         assert!(f32_to_i32(f32::NEG_INFINITY).is_err());
         assert!(f32_to_i32(f32::NAN).is_err());
         assert!(f32_to_i32(i32::MAX as f32 * 2.0).is_err());
     }
-    
+
     #[test]
     fn test_f32_to_i32_clamp() {
         assert_eq!(f32_to_i32_clamp(50.0, 0, 100), 50);
@@ -115,7 +113,7 @@ mod tests {
         assert_eq!(f32_to_i32_clamp(150.0, 0, 100), 100);
         assert_eq!(f32_to_i32_clamp(f32::NAN, 0, 100), 0);
     }
-    
+
     #[test]
     fn test_u32_to_i32() {
         assert_eq!(u32_to_i32(42).unwrap(), 42);
@@ -124,7 +122,7 @@ mod tests {
         assert!(u32_to_i32(i32::MAX as u32 + 1).is_err());
         assert!(u32_to_i32(u32::MAX).is_err());
     }
-    
+
     #[test]
     fn test_f64_to_i32() {
         assert_eq!(f64_to_i32(42.0).unwrap(), 42);
@@ -132,44 +130,44 @@ mod tests {
         assert_eq!(f64_to_i32(0.0).unwrap(), 0);
         assert_eq!(f64_to_i32(2147483647.0).unwrap(), i32::MAX);
         assert_eq!(f64_to_i32(-2147483648.0).unwrap(), i32::MIN);
-        
+
         assert!(f64_to_i32(f64::INFINITY).is_err());
         assert!(f64_to_i32(f64::NEG_INFINITY).is_err());
         assert!(f64_to_i32(f64::NAN).is_err());
         assert!(f64_to_i32(2147483648.0).is_err());
         assert!(f64_to_i32(-2147483649.0).is_err());
     }
-    
+
     #[test]
     fn test_edge_case_rounding() {
         // Test values very close to boundaries
         assert_eq!(f32_to_i32(2147483520.0).unwrap(), 2147483520);
         assert_eq!(f64_to_i32(2147483646.99).unwrap(), 2147483646);
-        
+
         // Test small fractions
         assert_eq!(f32_to_i32(0.9).unwrap(), 0);
         assert_eq!(f32_to_i32(-0.9).unwrap(), 0);
         assert_eq!(f64_to_i32(0.9999).unwrap(), 0);
         assert_eq!(f64_to_i32(-0.9999).unwrap(), 0);
     }
-    
+
     #[test]
     fn test_f32_to_i32_clamp_edge_cases() {
         // Test with extreme bounds
         assert_eq!(f32_to_i32_clamp(50.0, i32::MIN, i32::MAX), 50);
-        assert_eq!(f32_to_i32_clamp(f32::INFINITY, 0, 100), 0);  // Non-finite returns min
-        assert_eq!(f32_to_i32_clamp(f32::NEG_INFINITY, 0, 100), 0);  // Non-finite returns min
-        
+        assert_eq!(f32_to_i32_clamp(f32::INFINITY, 0, 100), 0); // Non-finite returns min
+        assert_eq!(f32_to_i32_clamp(f32::NEG_INFINITY, 0, 100), 0); // Non-finite returns min
+
         // Test with negative bounds
         assert_eq!(f32_to_i32_clamp(-50.0, -100, -10), -50);
         assert_eq!(f32_to_i32_clamp(-150.0, -100, -10), -100);
         assert_eq!(f32_to_i32_clamp(0.0, -100, -10), -10);
-        
+
         // Test with identical bounds
         assert_eq!(f32_to_i32_clamp(50.0, 42, 42), 42);
         assert_eq!(f32_to_i32_clamp(f32::NAN, 42, 42), 42);
     }
-    
+
     // Property-based tests
     proptest! {
         #[test]
@@ -178,14 +176,14 @@ mod tests {
             prop_assert!(result.is_ok());
             prop_assert_eq!(result.unwrap() as usize, value);
         }
-        
+
         #[test]
         fn prop_u32_to_i32_within_bounds(value in 0..=i32::MAX as u32) {
             let result = u32_to_i32(value);
             prop_assert!(result.is_ok());
             prop_assert_eq!(result.unwrap() as u32, value);
         }
-        
+
         #[test]
         fn prop_f32_to_i32_finite_within_bounds(value in any::<i32>()) {
             let f_value = value as f32;
@@ -195,7 +193,7 @@ mod tests {
                 prop_assert_eq!(result.unwrap(), value);
             }
         }
-        
+
         #[test]
         fn prop_f64_to_i32_finite_within_bounds(value in i32::MIN..=i32::MAX) {
             let f_value = f64::from(value);
@@ -203,7 +201,7 @@ mod tests {
             prop_assert!(result.is_ok());
             prop_assert_eq!(result.unwrap(), value);
         }
-        
+
         #[test]
         fn prop_f32_to_i32_clamp_always_within_bounds(
             value in any::<f32>(),
@@ -215,7 +213,7 @@ mod tests {
             prop_assert!(result >= min);
             prop_assert!(result <= max);
         }
-        
+
         #[test]
         fn prop_f32_to_i32_clamp_preserves_finite_values(
             min in i32::MIN/2..=0i32,
@@ -227,7 +225,7 @@ mod tests {
             prop_assert!(result <= max);
             prop_assert!((result as f32 - value).abs() < 1.0);
         }
-        
+
         #[test]
         fn prop_cast_consistency(value in 0..1000000i32) {
             // Test consistency across different cast paths
@@ -235,7 +233,7 @@ mod tests {
             let as_u32 = value as u32;
             let as_f32 = value as f32;
             let as_f64 = f64::from(value);
-            
+
             prop_assert_eq!(usize_to_i32(as_usize).unwrap(), value);
             prop_assert_eq!(u32_to_i32(as_u32).unwrap(), value);
             if as_f32 as i32 == value {  // Only if f32 conversion is lossless

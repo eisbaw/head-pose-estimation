@@ -80,7 +80,11 @@ impl SecondOrderLowPassFilter {
     /// Panics if cutoff_freq <= 0 or damping <= 0
     #[must_use]
     pub fn new(cutoff_freq: f64, damping: f64) -> Self {
-        assert!(cutoff_freq > 0.0, "Cutoff frequency must be positive, got {}", cutoff_freq);
+        assert!(
+            cutoff_freq > 0.0,
+            "Cutoff frequency must be positive, got {}",
+            cutoff_freq
+        );
         assert!(damping > 0.0, "Damping ratio must be positive, got {}", damping);
         let dt = 1.0 / DEFAULT_FPS;
 

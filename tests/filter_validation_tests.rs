@@ -2,11 +2,11 @@
 
 use head_pose_estimation::filters::{
     create_filter,
-    moving_average::MovingAverageFilter,
-    median::MedianFilter,
     exponential::ExponentialFilter,
-    low_pass::{LowPassFilter, SecondOrderLowPassFilter},
     hampel::HampelFilter,
+    low_pass::{LowPassFilter, SecondOrderLowPassFilter},
+    median::MedianFilter,
+    moving_average::MovingAverageFilter,
 };
 
 #[test]
@@ -87,7 +87,7 @@ fn test_create_filter_validation() {
     assert!(create_filter("lowpass:1.5").is_err());
     assert!(create_filter("hampel:0:3").is_err());
     assert!(create_filter("hampel:5:-1").is_err());
-    
+
     // Valid parameters should work
     assert!(create_filter("movingaverage:5").is_ok());
     assert!(create_filter("median:5").is_ok());
@@ -99,7 +99,6 @@ fn test_create_filter_validation() {
 
 #[test]
 fn test_filter_handles_edge_values() {
-    
     // Test filters with edge case values
     let test_cases = vec![
         ("kalman", vec![f64::NAN, f64::INFINITY, -f64::INFINITY]),
@@ -107,10 +106,10 @@ fn test_filter_handles_edge_values() {
         ("median:3", vec![f64::NAN, f64::INFINITY, 1.0]),
         ("exponential:0.5", vec![f64::NAN, f64::INFINITY, -f64::INFINITY]),
     ];
-    
+
     for (filter_type, values) in test_cases {
         let mut filter = create_filter(filter_type).unwrap();
-        
+
         // Apply edge values and ensure no panic
         for &val in &values {
             let (pitch, yaw) = filter.apply(val, val);

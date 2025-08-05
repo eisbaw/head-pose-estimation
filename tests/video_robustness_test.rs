@@ -182,7 +182,7 @@ fn test_video_with_cursor_modes() {
                         "run", "--",
                         "--video", "test.mp4",
                         "--cursor", cursor_mode,
-                        "--data-source", data_source,
+                        "--datasource", data_source,
                         "--vector", vector,
                         "--help"
                     ])
@@ -204,16 +204,16 @@ fn test_video_with_cursor_modes() {
 #[test]
 fn test_video_with_numeric_parameters() {
     let test_cases = vec![
-        vec!["--conf", "0.1"],
-        vec!["--conf", "0.5"],
-        vec!["--conf", "0.9"],
-        vec!["--nms", "0.1"],
-        vec!["--nms", "0.5"],
-        vec!["--nms", "0.9"],
-        vec!["--brightness", "-50"],
+        vec!["--brightness=-50"],
         vec!["--brightness", "0"],
         vec!["--brightness", "50"],
-        vec!["--conf", "0.5", "--nms", "0.5", "--brightness", "10"],
+        vec!["--brightness", "10"],
+        vec!["--filter", "kalman"],
+        vec!["--filter", "median:5"],
+        vec!["--filter", "lowpass:0.5"],
+        vec!["--brightness", "10", "--filter", "kalman"],
+        vec!["--gui", "none"],
+        vec!["--gui", "cam"],
     ];
     
     for args in test_cases {
@@ -239,13 +239,13 @@ fn test_video_with_numeric_parameters() {
 #[test]
 fn test_video_with_boolean_flags() {
     let flag_combinations = vec![
-        vec!["--invert-pitch"],
-        vec!["--invert-yaw"],
-        vec!["--invert-pitch", "--invert-yaw"],
+        vec!["--inv", "x"],
+        vec!["--inv", "y"],
+        vec!["--inv", "xy"],
         vec!["--debug"],
-        vec!["--all-filters"],
-        vec!["--debug", "--all-filters"],
-        vec!["--invert-pitch", "--invert-yaw", "--debug", "--all-filters"],
+        vec!["--cursor-filter-all"],
+        vec!["--debug", "--cursor-filter-all"],
+        vec!["--inv", "xy", "--debug", "--cursor-filter-all"],
     ];
     
     for flags in flag_combinations {

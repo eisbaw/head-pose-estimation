@@ -214,7 +214,6 @@ fn test_cursor_mode_state_machine() {
     }
     
     let mut state = State::Idle;
-    let mut cursor_mode = CursorMode::Absolute;
     
     // Test state transitions
     
@@ -223,7 +222,7 @@ fn test_cursor_mode_state_machine() {
     assert_eq!(state, State::Active);
     
     // Active -> Suspended (when key pressed in relative mode)
-    cursor_mode = CursorMode::Relative;
+    let cursor_mode = CursorMode::Relative;
     let key_pressed = true;
     if cursor_mode == CursorMode::Relative && !key_pressed {
         state = State::Suspended;

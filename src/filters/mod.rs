@@ -51,7 +51,7 @@ impl CursorFilter for NoFilter {
 }
 
 /// Create a cursor filter by type name
-/// 
+///
 /// # Supported filters:
 /// - `none` or `nofilter` - No filtering
 /// - `kalman` - Kalman filter
@@ -70,16 +70,19 @@ impl CursorFilter for NoFilter {
 pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
     let parts: Vec<&str> = filter_type.split(':').collect();
     let filter_name = parts[0].to_lowercase();
-    
+
     match filter_name.as_str() {
         "none" | "nofilter" => Ok(Box::new(NoFilter)),
         "kalman" => Ok(Box::new(kalman::KalmanFilter::new())),
         "movingaverage" | "moving_average" => {
             let window_size = if parts.len() > 1 {
-                let val = parts[1].parse::<usize>()
+                let val = parts[1]
+                    .parse::<usize>()
                     .map_err(|_| crate::Error::FilterError(format!("Invalid window size: {}", parts[1])))?;
                 if val == 0 {
-                    return Err(crate::Error::FilterError("Window size must be greater than 0".to_string()));
+                    return Err(crate::Error::FilterError(
+                        "Window size must be greater than 0".to_string(),
+                    ));
                 }
                 val
             } else {
@@ -89,13 +92,19 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
         }
         "median" => {
             let window_size = if parts.len() > 1 {
-                let val = parts[1].parse::<usize>()
+                let val = parts[1]
+                    .parse::<usize>()
                     .map_err(|_| crate::Error::FilterError(format!("Invalid window size: {}", parts[1])))?;
                 if val == 0 {
-                    return Err(crate::Error::FilterError("Window size must be greater than 0".to_string()));
+                    return Err(crate::Error::FilterError(
+                        "Window size must be greater than 0".to_string(),
+                    ));
                 }
                 if val % 2 == 0 {
-                    return Err(crate::Error::FilterError(format!("Median filter window size must be odd, got {}", val)));
+                    return Err(crate::Error::FilterError(format!(
+                        "Median filter window size must be odd, got {}",
+                        val
+                    )));
                 }
                 val
             } else {
@@ -105,7 +114,8 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
         }
         "exponential" => {
             let alpha = if parts.len() > 1 {
-                let val = parts[1].parse::<f64>()
+                let val = parts[1]
+                    .parse::<f64>()
                     .map_err(|_| crate::Error::FilterError(format!("Invalid alpha value: {}", parts[1])))?;
                 if val <= 0.0 || val > 1.0 {
                     return Err(crate::Error::FilterError(format!("Alpha must be in (0, 1], got {val}")));
@@ -118,10 +128,13 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
         }
         "lowpass" | "low_pass" => {
             let cutoff = if parts.len() > 1 {
-                let val = parts[1].parse::<f64>()
+                let val = parts[1]
+                    .parse::<f64>()
                     .map_err(|_| crate::Error::FilterError(format!("Invalid cutoff frequency: {}", parts[1])))?;
                 if val <= 0.0 || val > 1.0 {
-                    return Err(crate::Error::FilterError(format!("Cutoff must be in (0, 1], got {val}")));
+                    return Err(crate::Error::FilterError(format!(
+                        "Cutoff must be in (0, 1], got {val}"
+                    )));
                 }
                 val
             } else {
@@ -131,13 +144,15 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
         }
         "secondorderlowpass" | "lowpass2" | "low_pass2" => {
             let cutoff = if parts.len() > 1 {
-                parts[1].parse::<f64>()
+                parts[1]
+                    .parse::<f64>()
                     .map_err(|_| crate::Error::FilterError(format!("Invalid cutoff frequency: {}", parts[1])))?
             } else {
                 30.0
             };
             let damping = if parts.len() > 2 {
-                parts[2].parse::<f64>()
+                parts[2]
+                    .parse::<f64>()
                     .map_err(|_| crate::Error::FilterError(format!("Invalid damping ratio: {}", parts[2])))?
             } else {
                 0.707
@@ -146,20 +161,26 @@ pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
         }
         "hampel" => {
             let window_size = if parts.len() > 1 {
-                let val = parts[1].parse::<usize>()
+                let val = parts[1]
+                    .parse::<usize>()
                     .map_err(|_| crate::Error::FilterError(format!("Invalid window size: {}", parts[1])))?;
                 if val == 0 {
-                    return Err(crate::Error::FilterError("Window size must be greater than 0".to_string()));
+                    return Err(crate::Error::FilterError(
+                        "Window size must be greater than 0".to_string(),
+                    ));
                 }
                 val
             } else {
                 5
             };
             let threshold = if parts.len() > 2 {
-                let val = parts[2].parse::<f64>()
+                let val = parts[2]
+                    .parse::<f64>()
                     .map_err(|_| crate::Error::FilterError(format!("Invalid threshold: {}", parts[2])))?;
                 if val < 0.0 {
-                    return Err(crate::Error::FilterError(format!("Threshold must be non-negative, got {val}")));
+                    return Err(crate::Error::FilterError(format!(
+                        "Threshold must be non-negative, got {val}"
+                    )));
                 }
                 val
             } else {
@@ -199,7 +220,7 @@ mod tests {
         assert!(create_filter("lowpass:0.3").is_ok());
         assert!(create_filter("secondorderlowpass:20:0.5").is_ok());
         assert!(create_filter("hampel:9:2.5").is_ok());
-        
+
         // Test invalid parameters
         assert!(create_filter("movingaverage:abc").is_err());
         assert!(create_filter("exponential:2.0").is_err()); // Alpha should be in (0, 1]

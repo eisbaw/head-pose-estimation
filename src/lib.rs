@@ -16,7 +16,7 @@
 //! ## Basic Usage
 //!
 //! ```no_run
-//! use head_pose_estimation::{face_detection::FaceDetector, mark_detection::MarkDetector, 
+//! use head_pose_estimation::{face_detection::FaceDetector, mark_detection::MarkDetector,
 //!                            pose_estimation::PoseEstimator, filters::create_filter};
 //! use opencv::{imgcodecs, core::Mat, prelude::*};
 //!
@@ -28,10 +28,10 @@
 //!
 //! // Load and process an image
 //! let image = imgcodecs::imread("test.jpg", imgcodecs::IMREAD_COLOR)?;
-//! 
+//!
 //! // Detect faces
 //! let faces = face_detector.detect(&image)?;
-//! 
+//!
 //! // For each detected face
 //! for face in faces {
 //!     // Extract face region
@@ -91,7 +91,7 @@
 //! let pitch = 10.5;
 //! let yaw = -15.2;
 //! let is_moving = detector.update(pitch, yaw);
-//! 
+//!
 //! if is_moving {
 //!     println!("Head is moving");
 //! } else {

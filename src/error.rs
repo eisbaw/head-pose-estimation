@@ -32,19 +32,19 @@ pub enum Error {
     /// Model loading or inference error
     #[error("Model error: {0}")]
     ModelError(String),
-    
+
     /// Model input configuration error
     #[error("Model input error: {0}")]
     ModelInputError(String),
-    
+
     /// Model output processing error
     #[error("Model output error: {0}")]
     ModelOutputError(String),
-    
+
     /// Model data shape or format error
     #[error("Model data format error: {0}")]
     ModelDataFormatError(String),
-    
+
     /// Model validation error (wrong number of points, etc.)
     #[error("Model validation error: {0}")]
     ModelValidationError(String),
@@ -56,7 +56,7 @@ pub enum Error {
     /// Movement detection algorithm error
     #[error("Movement detection error: {0}")]
     MovementDetectionError(String),
-    
+
     /// Cursor control operation failed
     #[error("Cursor control error: {0}")]
     CursorControl(String),

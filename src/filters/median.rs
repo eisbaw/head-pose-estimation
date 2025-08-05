@@ -17,7 +17,11 @@ impl MedianFilter {
     #[must_use]
     pub fn new(window_size: usize) -> Self {
         assert!(window_size > 0, "Window size must be greater than 0");
-        assert!(window_size % 2 == 1, "Median filter window size must be odd, got {}", window_size);
+        assert!(
+            window_size % 2 == 1,
+            "Median filter window size must be odd, got {}",
+            window_size
+        );
         Self {
             window_size,
             pitch_buffer: VecDeque::with_capacity(window_size),
@@ -30,7 +34,7 @@ impl MedianFilter {
         sorted.sort_by(|a, b| {
             match (a.is_finite(), b.is_finite()) {
                 (true, true) => a.partial_cmp(b).unwrap(),
-                (true, false) => std::cmp::Ordering::Less,  // finite values come before non-finite
+                (true, false) => std::cmp::Ordering::Less, // finite values come before non-finite
                 (false, true) => std::cmp::Ordering::Greater,
                 (false, false) => std::cmp::Ordering::Equal,
             }

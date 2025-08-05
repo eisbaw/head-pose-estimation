@@ -5,23 +5,20 @@ use opencv::{core::Mat, prelude::*};
 
 /// Create a test image with specified dimensions and type
 pub fn create_test_image(height: i32, width: i32, cv_type: i32) -> Result<Mat> {
-    Mat::zeros(height, width, cv_type)?
-        .to_mat()
-        .map_err(Into::into)
+    Mat::zeros(height, width, cv_type)?.to_mat().map_err(Into::into)
 }
 
 /// Assert that a Vec3d contains finite values
 pub fn assert_vec3d_finite(vec: &opencv::core::Vec3d) -> Result<()> {
     for i in 0..3 {
-        let value = vec.get(i)
-            .ok_or_else(|| head_pose_estimation::Error::InvalidInput(
-                format!("Cannot access element {i} of Vec3d")
-            ))?;
-        
+        let value = vec
+            .get(i)
+            .ok_or_else(|| head_pose_estimation::Error::InvalidInput(format!("Cannot access element {i} of Vec3d")))?;
+
         if !value.is_finite() {
-            return Err(head_pose_estimation::Error::InvalidInput(
-                format!("Non-finite value at index {i}: {value}")
-            ));
+            return Err(head_pose_estimation::Error::InvalidInput(format!(
+                "Non-finite value at index {i}: {value}"
+            )));
         }
     }
     Ok(())
