@@ -686,6 +686,121 @@ impl HeadPoseApp {
                     0,
                 )?;
             }
+            
+            // Draw debug overlay if enabled
+            if self.config.debug && !result.poses.is_empty() {
+                let pose = &result.poses[0];
+                let text_color = Scalar::new(200.0, 200.0, 200.0, 0.0);
+                
+                // Draw angle values or normal projection values
+                match self.config.data_source {
+                    DataSource::PitchYaw => {
+                        let pitch_text = format!("Pitch: {:.1}", pose.pitch);
+                        let yaw_text = format!("Yaw: {:.1}", pose.yaw);
+                        let roll_text = format!("Roll: {:.1}", pose.roll);
+                        
+                        imgproc::put_text(
+                            &mut cursor_frame,
+                            &pitch_text,
+                            Point::new(10, 450),
+                            FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            text_color,
+                            2,
+                            LINE_8,
+                            false,
+                        )?;
+                        
+                        imgproc::put_text(
+                            &mut cursor_frame,
+                            &yaw_text,
+                            Point::new(10, 480),
+                            FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            text_color,
+                            2,
+                            LINE_8,
+                            false,
+                        )?;
+                        
+                        imgproc::put_text(
+                            &mut cursor_frame,
+                            &roll_text,
+                            Point::new(10, 510),
+                            FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            text_color,
+                            2,
+                            LINE_8,
+                            false,
+                        )?;
+                    }
+                    DataSource::NormalProjection => {
+                        // TODO: Implement normal projection display
+                        let text = "Normal projection not implemented";
+                        imgproc::put_text(
+                            &mut cursor_frame,
+                            text,
+                            Point::new(10, 450),
+                            FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            text_color,
+                            2,
+                            LINE_8,
+                            false,
+                        )?;
+                    }
+                }
+                
+                // Draw movement status if detector is active
+                if self.movement_detector.is_some() {
+                    let status_y = match self.config.data_source {
+                        DataSource::PitchYaw => 540,
+                        DataSource::NormalProjection => 480,
+                    };
+                    
+                    let (status_text, status_color) = if self.is_moving {
+                        ("Status: MOVING", Scalar::new(0.0, 255.0, 0.0, 0.0))
+                    } else {
+                        ("Status: STILL", Scalar::new(0.0, 100.0, 255.0, 0.0))
+                    };
+                    
+                    imgproc::put_text(
+                        &mut cursor_frame,
+                        status_text,
+                        Point::new(10, status_y),
+                        FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        status_color,
+                        2,
+                        LINE_8,
+                        false,
+                    )?;
+                    
+                    // Draw movement statistics if available
+                    if let Some(detector) = &self.movement_detector {
+                        if let Some((pitch_stats, yaw_stats)) = detector.get_stats() {
+                            let stats_text = format!(
+                                "Movement: P_std={:.2} Y_std={:.2}", 
+                                pitch_stats.std_dev, 
+                                yaw_stats.std_dev
+                            );
+                            
+                            imgproc::put_text(
+                                &mut cursor_frame,
+                                &stats_text,
+                                Point::new(10, status_y + 30),
+                                FONT_HERSHEY_SIMPLEX,
+                                0.5,
+                                text_color,
+                                1,
+                                LINE_8,
+                                false,
+                            )?;
+                        }
+                    }
+                }
+            }
 
             highgui::imshow("Head Pose Cursor", &cursor_frame)?;
         }
