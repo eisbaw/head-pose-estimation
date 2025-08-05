@@ -33,7 +33,7 @@
 - [x] DONE: Port distance2bbox function
 - [x] DONE: Port distance2kps function
 - [x] DONE: Implement NMS (Non-Maximum Suppression)
-- [ ] Add face detection visualization
+- [x] DONE: Add face detection visualization
 - [x] DONE: Write unit tests for face detection (test_distance_to_bbox)
 
 ### Week 4: Landmark Detection Module
@@ -42,7 +42,7 @@
 - [x] DONE: Port image preprocessing (resize, color conversion)
 - [x] DONE: Implement batch inference support
 - [x] DONE: Convert landmark output format
-- [ ] Add landmark visualization
+- [x] DONE: Add landmark visualization
 - [ ] Write unit tests for landmark detection
 
 ## Phase 3: Pose Estimation
@@ -54,8 +54,8 @@
 - [x] DONE: Port PnP solver using OpenCV
 - [x] DONE: Implement Euler angle extraction
 - [ ] Port pose visualization (3D box drawing)
-- [ ] Implement draw_axes functionality
-- [ ] Implement draw_normal_vector functionality
+- [x] DONE: Implement draw_axes functionality
+- [x] DONE: Implement draw_normal_vector functionality
 - [x] DONE: Add tests for pose estimation accuracy (test_euler_angle_conversion)
 
 ## Phase 4: Filtering System
@@ -126,7 +126,7 @@
 ## Phase 7: Testing and Optimization
 
 ### Week 12: Integration and Testing
-- [ ] Create integration tests for full pipeline
+- [x] DONE: Create integration tests for full pipeline
 - [ ] Add performance benchmarks vs Python
 - [ ] Profile memory usage
 - [ ] Optimize hot paths
