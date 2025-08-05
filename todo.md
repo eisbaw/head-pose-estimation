@@ -279,9 +279,9 @@ approx = "0.5"
 ### High Priority
 - [x] DONE: Fix potential panic in KalmanFilter matrix inversion (already uses try_inverse)
 - [x] DONE: Fix suspicious operation grouping in SecondOrderLowPassFilter (line 96)
-- [ ] Add proper error handling for all unwrap() calls in tests
-- [ ] Handle usize to i32 casts that may wrap on 32-bit systems
-- [ ] Add more backticks to documentation items (OpenCV, PnP, window_size)
+- [x] DONE: Add proper error handling for all unwrap() calls in tests
+- [x] DONE: Handle usize to i32 casts that may wrap on 32-bit systems
+- [x] DONE: Add more backticks to documentation items (OpenCV, PnP, window_size)
 - [x] DONE: Handle partial_cmp unwrap calls in sort operations
 
 ### Medium Priority
@@ -345,3 +345,32 @@ approx = "0.5"
 - [ ] Test filter behavior with extreme values (infinity, NaN)
 - [ ] Add benchmarks comparing filter performance
 - [ ] Test thread safety of filters (Send + Sync traits)
+
+## Code Smells Found by Clippy (New)
+
+### Critical Issues
+- [ ] Fix many usize to i32 casts that may wrap on 32-bit systems
+- [ ] Fix u16 to i16 casts that may wrap
+- [ ] Fix complex type in face_detection forward() return type
+- [ ] Replace manual range loops with iterators
+
+### Medium Priority
+- [ ] Use inline format variables instead of positional parameters
+- [ ] Derive Eq for enums that derive PartialEq  
+- [ ] Make const-eligible functions const
+- [ ] Use f64::from() for lossless casts
+- [ ] Remove unused self parameters or refactor to associated functions
+- [ ] Fix similar variable names (stats_text vs status_text)
+
+### Performance Improvements
+- [ ] Replace Vec<u8> allocation with iterators in face detection
+- [ ] Use slice patterns instead of indexing
+- [ ] Consider SmallVec for small collections
+- [ ] Avoid unnecessary clones with .copied()
+
+### Code Quality
+- [ ] Add error context instead of generic "Failed to X" messages
+- [ ] Use more specific error types
+- [ ] Document panics in public APIs
+- [ ] Add examples to public functions
+- [ ] Use type aliases for complex types
