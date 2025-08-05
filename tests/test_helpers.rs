@@ -15,12 +15,12 @@ pub fn assert_vec3d_finite(vec: &opencv::core::Vec3d) -> Result<()> {
     for i in 0..3 {
         let value = vec.get(i)
             .ok_or_else(|| head_pose_estimation::Error::InvalidInput(
-                format!("Cannot access element {} of Vec3d", i)
+                format!("Cannot access element {i} of Vec3d")
             ))?;
         
         if !value.is_finite() {
             return Err(head_pose_estimation::Error::InvalidInput(
-                format!("Non-finite value at index {}: {}", i, value)
+                format!("Non-finite value at index {i}: {value}")
             ));
         }
     }

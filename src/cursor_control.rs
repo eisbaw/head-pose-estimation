@@ -3,7 +3,10 @@
 //! This module provides functionality to control the mouse cursor position
 //! using X11 protocols. It supports both absolute and relative cursor movement.
 
-use crate::error::{AppError, Result};
+use crate::{
+    error::{AppError, Result},
+    utils::safe_cast::f64_to_i32,
+};
 use log::{debug, info};
 use x11rb::{
     connection::Connection,
@@ -67,8 +70,8 @@ impl CursorController {
     /// Set cursor position (absolute)
     pub fn set_position(&self, x: i16, y: i16) -> Result<()> {
         // Clamp to screen bounds
-        let x = x.clamp(0, self.screen_width as i16 - 1);
-        let y = y.clamp(0, self.screen_height as i16 - 1);
+        let x = x.clamp(0, (self.screen_width.saturating_sub(1)) as i16);
+        let y = y.clamp(0, (self.screen_height.saturating_sub(1)) as i16);
         
         debug!("Setting cursor position to ({}, {})", x, y);
         
@@ -107,14 +110,18 @@ impl CursorController {
     
     /// Map normalized coordinates to screen coordinates
     pub fn map_to_screen(&self, normalized_x: f64, normalized_y: f64) -> (i16, i16) {
-        let x = (normalized_x * self.screen_width as f64) as i16;
-        let y = (normalized_y * self.screen_height as f64) as i16;
+        let x = f64_to_i32(normalized_x * self.screen_width as f64)
+            .unwrap_or(0)
+            .clamp(0, i16::MAX as i32) as i16;
+        let y = f64_to_i32(normalized_y * self.screen_height as f64)
+            .unwrap_or(0)
+            .clamp(0, i16::MAX as i32) as i16;
         (x, y)
     }
 }
 
 /// Cursor control mode
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CursorMode {
     /// Direct absolute positioning
     Absolute,
@@ -125,7 +132,7 @@ pub enum CursorMode {
 }
 
 /// Data source for cursor control
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataSource {
     /// Use pitch and yaw angles
     PitchYaw,

@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{Result, utils::safe_cast::usize_to_i32};
 use ndarray::{Array1, Array4, CowArray};
 use opencv::core::{Mat, Point2f, Size, CV_32F};
 use opencv::imgproc::{self, InterpolationFlags};
@@ -118,7 +118,7 @@ impl MarkDetector {
             for row in 0..size {
                 for col in 0..size {
                     for ch in 0..channels {
-                        let pixel = float_image.at_2d::<opencv::core::Vec3f>(row as i32, col as i32)?[ch];
+                        let pixel = float_image.at_2d::<opencv::core::Vec3f>(usize_to_i32(row)?, usize_to_i32(col)?)?[ch];
                         let batch_idx = offset + (row * size + col) * channels + ch;
                         batch_data[batch_idx] = pixel;
                     }

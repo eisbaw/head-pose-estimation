@@ -74,8 +74,10 @@ fn test_cursor_position_calculation() {
 fn angle_to_pixel(angle: f64, angle_range: f64, screen_dimension: i32) -> i32 {
     // Map angle from [-angle_range/2, angle_range/2] to [0, screen_dimension]
     let normalized = (angle + angle_range / 2.0) / angle_range;
-    let pixel = (normalized * screen_dimension as f64) as i32;
-    pixel.clamp(0, screen_dimension - 1)
+    let pixel = (normalized * screen_dimension as f64)
+        .round()
+        .clamp(0.0, (screen_dimension - 1) as f64) as i32;
+    pixel
 }
 
 /// Test movement-based cursor control

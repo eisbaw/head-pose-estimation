@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{Result, utils::safe_cast::{usize_to_i32, f32_to_i32_clamp}};
 use ndarray::{s, Array1, Array2, Array3, Array4, CowArray};
 use opencv::core::{Mat, Point2f, Rect, Scalar, Size, CV_32F};
 use opencv::imgproc::{self, InterpolationFlags};
@@ -7,6 +7,9 @@ use ort::{Environment, Session, Value};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+
+/// Type alias for face detection forward pass outputs
+type FaceDetectionOutputs = (Vec<Array1<f32>>, Vec<Array2<f32>>, Vec<Array3<f32>>);
 
 /// Default SCRFD model input size
 const DEFAULT_INPUT_SIZE: i32 = 640;
@@ -71,8 +74,8 @@ impl FaceDetector {
         // Extract input size from shape [batch, channels, height, width]
         let input_size = if input_shape.len() >= 4 {
             // Note: dimensions are Option<u32>, we need to handle this properly
-            let height = input_shape[2].unwrap_or(DEFAULT_INPUT_SIZE as u32) as i32;
-            let width = input_shape[3].unwrap_or(DEFAULT_INPUT_SIZE as u32) as i32;
+            let height = usize_to_i32(input_shape[2].unwrap_or(DEFAULT_INPUT_SIZE as u32) as usize)?;
+            let width = usize_to_i32(input_shape[3].unwrap_or(DEFAULT_INPUT_SIZE as u32) as usize)?;
             (width, height)
         } else {
             (DEFAULT_INPUT_SIZE, DEFAULT_INPUT_SIZE)
@@ -126,11 +129,11 @@ impl FaceDetector {
         
         let (new_width, new_height) = if ratio_img > ratio_model {
             let new_height = input_height;
-            let new_width = (new_height as f32 / ratio_img) as i32;
+            let new_width = f32_to_i32_clamp(new_height as f32 / ratio_img, 0, i32::MAX);
             (new_width, new_height)
         } else {
             let new_width = input_width;
-            let new_height = (new_width as f32 * ratio_img) as i32;
+            let new_height = f32_to_i32_clamp(new_width as f32 * ratio_img, 0, i32::MAX);
             (new_width, new_height)
         };
         
@@ -200,7 +203,7 @@ impl FaceDetector {
                     let idx = (row * width + col) * channels + ch;
                     // Access pixel value safely
                     // For 3-channel image, access as Vec3f
-                    let pixel = float_image.at_2d::<opencv::core::Vec3f>(row as i32, col as i32)?[ch];
+                    let pixel = float_image.at_2d::<opencv::core::Vec3f>(usize_to_i32(row)?, usize_to_i32(col)?)?[ch];
                     data[idx] = (pixel - 127.5) / 128.0;
                 }
             }
@@ -221,14 +224,14 @@ impl FaceDetector {
         &mut self,
         inputs: Array4<f32>,
         threshold: f32,
-    ) -> Result<(Vec<Array1<f32>>, Vec<Array2<f32>>, Vec<Array3<f32>>)> {
+    ) -> Result<FaceDetectionOutputs> {
         let mut scores_list = Vec::new();
         let mut bboxes_list = Vec::new();
         let mut kpss_list = Vec::new();
         
         // Get input dimensions before moving the array
-        let input_height = inputs.shape()[2] as i32;
-        let input_width = inputs.shape()[3] as i32;
+        let input_height = usize_to_i32(inputs.shape()[2])?;
+        let input_width = usize_to_i32(inputs.shape()[3])?;
         
         // Create ONNX input
         let cow_array = CowArray::from(inputs.into_dyn());
@@ -243,7 +246,7 @@ impl FaceDetector {
             let scores_output = outputs[idx].try_extract::<f32>()?;
             let scores_view = scores_output.view();
             let scores_flat = scores_view.as_slice()
-                .ok_or_else(|| crate::error::Error::ModelError("Failed to get scores as slice".to_string()))?;
+                .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract scores as slice for stride {} at output index {}", stride, idx)))?;
             let scores = Array1::from(scores_flat.to_vec());
             
             // Extract bbox predictions
@@ -267,7 +270,7 @@ impl FaceDetector {
                 )));
             };
             let bbox_slice = bbox_view.as_slice()
-                .ok_or_else(|| crate::error::Error::ModelError("Failed to get bbox data as slice".to_string()))?;
+                .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract bbox data as slice for stride {} at output index {}", stride, bbox_idx)))?;
             let bbox_data: Vec<f32> = bbox_slice
                 .iter()
                 .map(|&x| x * stride as f32)
@@ -319,7 +322,7 @@ impl FaceDetector {
                 let kps_output = outputs[kps_idx].try_extract::<f32>()?;
                 let kps_view = kps_output.view();
                 let kps_slice = kps_view.as_slice()
-                    .ok_or_else(|| crate::error::Error::ModelError("Failed to get keypoints data as slice".to_string()))?;
+                    .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract keypoints data as slice for stride {} at output index {}", stride, kps_idx)))?;
                 let kps_data: Vec<f32> = kps_slice
                     .iter()
                     .map(|&x| x * stride as f32)
@@ -329,7 +332,7 @@ impl FaceDetector {
                 let pos_kpss = Array3::from_shape_vec(
                     (pos_inds.len(), NUM_FACE_KEYPOINTS, 2),
                     pos_inds.iter()
-                        .flat_map(|&i| kpss.slice(s![i, .., ..]).iter().cloned().collect::<Vec<f32>>())
+                        .flat_map(|&i| kpss.slice(s![i, .., ..]).iter().copied().collect::<Vec<f32>>())
                         .collect(),
                 ).map_err(|e| crate::error::Error::ModelError(format!("Failed to collect kpss: {}", e)))?;
                 
@@ -361,7 +364,7 @@ impl FaceDetector {
             }
         }
         
-        let n_points = (height * width * self.num_anchors as i32) as usize;
+        let n_points = (height as usize) * (width as usize) * self.num_anchors;
         Array2::from_shape_vec((n_points, 2), centers)
             .map_err(|e| crate::error::Error::ModelError(format!("Failed to create anchor centers array: {}", e)))
     }
@@ -432,10 +435,10 @@ impl FaceDetector {
         for &idx in &keep {
             let orig_idx = indices[idx];
             let bbox = Rect::new(
-                scaled_bboxes[[orig_idx, 0]] as i32,
-                scaled_bboxes[[orig_idx, 1]] as i32,
-                (scaled_bboxes[[orig_idx, 2]] - scaled_bboxes[[orig_idx, 0]]) as i32,
-                (scaled_bboxes[[orig_idx, 3]] - scaled_bboxes[[orig_idx, 1]]) as i32,
+                f32_to_i32_clamp(scaled_bboxes[[orig_idx, 0]], 0, i32::MAX),
+                f32_to_i32_clamp(scaled_bboxes[[orig_idx, 1]], 0, i32::MAX),
+                f32_to_i32_clamp(scaled_bboxes[[orig_idx, 2]] - scaled_bboxes[[orig_idx, 0]], 0, i32::MAX),
+                f32_to_i32_clamp(scaled_bboxes[[orig_idx, 3]] - scaled_bboxes[[orig_idx, 1]], 0, i32::MAX),
             );
             
             let score = all_scores[orig_idx];
@@ -640,7 +643,12 @@ mod tests {
             let x2 = cx + distances[i * 4 + 2];
             let y2 = cy + distances[i * 4 + 3];
 
-            let mut bbox = Rect::new(x1 as i32, y1 as i32, (x2 - x1) as i32, (y2 - y1) as i32);
+            let mut bbox = Rect::new(
+                f32_to_i32_clamp(x1, 0, i32::MAX),
+                f32_to_i32_clamp(y1, 0, i32::MAX),
+                f32_to_i32_clamp(x2 - x1, 0, i32::MAX),
+                f32_to_i32_clamp(y2 - y1, 0, i32::MAX)
+            );
 
             // Clip to image boundaries if max_shape is provided
             if let Some((max_w, max_h)) = max_shape {

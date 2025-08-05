@@ -8,6 +8,7 @@ use crate::{
     mark_detection::MarkDetector,
     movement_detector::MovementDetector,
     pose_estimation::PoseEstimator,
+    utils::safe_cast::{f32_to_i32_clamp, f64_to_i32},
     utils::refine_boxes,
 };
 use log::{info, warn};
@@ -59,7 +60,7 @@ pub enum VideoSource {
 }
 
 /// Cursor control mode
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CursorMode {
     /// No cursor control
     None,
@@ -68,7 +69,7 @@ pub enum CursorMode {
 }
 
 /// GUI display mode
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GuiMode {
     /// Show all windows
     All,
@@ -81,7 +82,7 @@ pub enum GuiMode {
 }
 
 /// Image inversion mode
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvertMode {
     /// No inversion
     None,
@@ -94,7 +95,7 @@ pub enum InvertMode {
 }
 
 /// Data source for cursor control
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataSource {
     /// Use pitch and yaw angles
     PitchYaw,
@@ -103,7 +104,7 @@ pub enum DataSource {
 }
 
 /// Vector interpretation mode
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VectorMode {
     /// Direct position mapping
     Location,
@@ -449,8 +450,12 @@ impl HeadPoseApp {
                 if self.config.cursor_relative {
                     // Relative mode - use cursor values as velocity
                     let scale = 5.0; // Sensitivity factor
-                    let dx = (cursor_x * scale) as i16;
-                    let dy = (cursor_y * scale) as i16;
+                    let dx = f64_to_i32(cursor_x * scale)
+                        .unwrap_or(0)
+                        .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+                    let dy = f64_to_i32(cursor_y * scale)
+                        .unwrap_or(0)
+                        .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
                     
                     if dx != 0 || dy != 0 {
                         controller.move_relative(dx, dy)?;
@@ -461,8 +466,12 @@ impl HeadPoseApp {
                     let norm_x = (cursor_x + 0.5).clamp(0.0, 1.0);
                     let norm_y = (cursor_y + 0.5).clamp(0.0, 1.0);
                     
-                    let screen_x = (norm_x * screen_width as f64) as i16;
-                    let screen_y = (norm_y * screen_height as f64) as i16;
+                    let screen_x = f64_to_i32(norm_x * screen_width as f64)
+                        .unwrap_or(0)
+                        .clamp(0, i16::MAX as i32) as i16;
+                    let screen_y = f64_to_i32(norm_y * screen_height as f64)
+                        .unwrap_or(0)
+                        .clamp(0, i16::MAX as i32) as i16;
                     
                     controller.set_position(screen_x, screen_y)?;
                 }
@@ -535,8 +544,8 @@ impl HeadPoseApp {
                     
                     for landmark in &result.landmarks[i] {
                         // Transform landmark from face ROI coordinates to frame coordinates
-                        let x = refined_box.x + (landmark.x * refined_box.width as f32 / 256.0) as i32;
-                        let y = refined_box.y + (landmark.y * refined_box.height as f32 / 256.0) as i32;
+                        let x = refined_box.x + f32_to_i32_clamp(landmark.x * refined_box.width as f32 / 256.0, 0, i32::MAX);
+                        let y = refined_box.y + f32_to_i32_clamp(landmark.y * refined_box.height as f32 / 256.0, 0, i32::MAX);
                         
                         imgproc::circle(
                             &mut display_frame,
@@ -646,8 +655,8 @@ impl HeadPoseApp {
                 
                 // Draw cursor positions
                 for (_name, (x, y), color) in all_positions {
-                    let cursor_x = ((x + 0.5) * 800.0) as i32;
-                    let cursor_y = ((y + 0.5) * 600.0) as i32;
+                    let cursor_x = f64_to_i32((x + 0.5) * 800.0).unwrap_or(0);
+                    let cursor_y = f64_to_i32((y + 0.5) * 600.0).unwrap_or(0);
                     
                     // Draw circle with alpha blending for overlapping cursors
                     imgproc::circle(
@@ -673,8 +682,8 @@ impl HeadPoseApp {
                 }
             } else if let Some((x, y)) = result.cursor_pos {
                 // Single cursor mode
-                let cursor_x = ((x + 0.5) * 800.0) as i32;
-                let cursor_y = ((y + 0.5) * 600.0) as i32;
+                let cursor_x = f64_to_i32((x + 0.5) * 800.0).unwrap_or(0);
+                let cursor_y = f64_to_i32((y + 0.5) * 600.0).unwrap_or(0);
                 
                 imgproc::circle(
                     &mut cursor_frame,
@@ -819,7 +828,7 @@ impl HeadPoseApp {
         // Use nose tip as origin (landmark 30)
         if landmarks.len() > 30 {
             let nose_tip = &landmarks[30];
-            let origin = Point::new(nose_tip.x as i32, nose_tip.y as i32);
+            let origin = Point::new(f32_to_i32_clamp(nose_tip.x, i32::MIN, i32::MAX), f32_to_i32_clamp(nose_tip.y, i32::MIN, i32::MAX));
             
             // Define axis lengths
             let axis_length = 50.0;
@@ -835,8 +844,8 @@ impl HeadPoseApp {
             // Project 3D axes to 2D
             // X-axis (red)
             let x_end = Point::new(
-                origin.x + (r11 * axis_length) as i32,
-                origin.y + (r21 * axis_length) as i32,
+                origin.x + f64_to_i32(r11 * axis_length).unwrap_or(0),
+                origin.y + f64_to_i32(r21 * axis_length).unwrap_or(0),
             );
             imgproc::arrowed_line(
                 frame,
@@ -851,8 +860,8 @@ impl HeadPoseApp {
             
             // Y-axis (green)
             let y_end = Point::new(
-                origin.x + (r12 * axis_length) as i32,
-                origin.y + (r22 * axis_length) as i32,
+                origin.x + f64_to_i32(r12 * axis_length).unwrap_or(0),
+                origin.y + f64_to_i32(r22 * axis_length).unwrap_or(0),
             );
             imgproc::arrowed_line(
                 frame,
@@ -867,8 +876,8 @@ impl HeadPoseApp {
             
             // Z-axis (blue) - pointing out of the face
             let z_end = Point::new(
-                origin.x + (r31 * axis_length) as i32,
-                origin.y + (r32 * axis_length) as i32,
+                origin.x + f64_to_i32(r31 * axis_length).unwrap_or(0),
+                origin.y + f64_to_i32(r32 * axis_length).unwrap_or(0),
             );
             imgproc::arrowed_line(
                 frame,

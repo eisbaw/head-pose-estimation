@@ -79,12 +79,12 @@ fn test_filter_pipeline_safe() -> Result<()> {
             // Verify filtered values are finite
             if !filtered.0.is_finite() {
                 return Err(head_pose_estimation::Error::FilterError(
-                    format!("Filter {} produced non-finite pitch", filter_name)
+                    format!("Filter {filter_name} produced non-finite pitch")
                 ));
             }
             if !filtered.1.is_finite() {
                 return Err(head_pose_estimation::Error::FilterError(
-                    format!("Filter {} produced non-finite yaw", filter_name)
+                    format!("Filter {filter_name} produced non-finite yaw")
                 ));
             }
         }
@@ -94,7 +94,7 @@ fn test_filter_pipeline_safe() -> Result<()> {
         let (pitch, yaw) = filter.apply(0.0, 0.0);
         if !pitch.is_finite() || !yaw.is_finite() {
             return Err(head_pose_estimation::Error::FilterError(
-                format!("Filter {} produced non-finite values after reset", filter_name)
+                format!("Filter {filter_name} produced non-finite values after reset")
             ));
         }
     }

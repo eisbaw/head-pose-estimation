@@ -31,10 +31,10 @@ impl PoseEstimator {
         let camera_matrix_data: [f64; 9] = [focal_length, 0.0, center.0, 0.0, focal_length, center.1, 0.0, 0.0, 1.0];
 
         // Fill camera matrix
-        for i in 0..3 {
-            for j in 0..3 {
-                *camera_matrix.at_2d_mut::<f64>(i, j)? = camera_matrix_data[(i * 3 + j) as usize];
-            }
+        for (idx, &value) in camera_matrix_data.iter().enumerate() {
+            let i = idx / 3;
+            let j = idx % 3;
+            *camera_matrix.at_2d_mut::<f64>(i as i32, j as i32)? = value;
         }
 
         // Assume no lens distortion
