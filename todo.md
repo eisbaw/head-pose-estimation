@@ -131,9 +131,9 @@
 - [ ] Profile memory usage
 - [ ] Optimize hot paths
 - [ ] Add SIMD optimizations where beneficial
-- [ ] Test with various video inputs
+- [x] DONE: Test with various video inputs
 - [x] DONE: Ensure filter outputs match Python within tolerance
-- [ ] Create test suite for cursor control
+- [x] DONE: Create test suite for cursor control
 
 ### Week 13: Polish and Documentation
 - [x] DONE: Write comprehensive README
@@ -423,3 +423,35 @@ approx = "0.5"
 - [ ] Profile memory allocations in hot paths
 - [ ] Consider pre-allocating buffers for video frames
 - [ ] Optimize anchor center generation with const evaluation
+
+## Critical Issues Found During Code Review (2025-08-05)
+
+### High Priority - Safety Critical
+- [ ] Fix integer overflow vulnerabilities in face_detection.rs (lines 93-94, 251-252, 303-304)
+- [ ] Add bounds checking to distance_to_kps_array function to prevent buffer overruns
+- [ ] Fix filter parameter validation - median filter allows zero window size
+- [ ] Address thread safety concerns in FaceDetector and MarkDetector
+- [ ] Improve OpenCV error handling - Mat operations can fail silently
+
+### Medium Priority - Performance
+- [ ] Fix memory allocation inefficiencies in face detection preprocessing
+- [ ] Add explicit cleanup for ONNX sessions to prevent memory leaks
+- [ ] Replace magic numbers in Kalman filter with configurable parameters
+- [ ] Implement resource pooling for memory-intensive operations
+
+### Code Quality Improvements
+- [ ] Improve error messages with more context (e.g., shape and size info)
+- [ ] Add integration tests for full pipeline with error conditions
+- [ ] Add property-based tests for all numeric conversion functions
+- [ ] Split large modules (app.rs 1000+ lines, face_detection.rs 690+ lines)
+- [ ] Create domain-specific error types instead of generic ModelError
+- [ ] Implement builder pattern for complex configuration structs
+- [ ] Add comprehensive examples for complex configuration scenarios
+- [ ] Document performance characteristics of each filter type
+- [ ] Create Python to Rust migration guide
+
+### Missing Critical Tests
+- [ ] Test behavior when ONNX models are corrupted or missing
+- [ ] Test error recovery for X11 failures
+- [ ] Test concurrent access to shared resources
+- [ ] Test filter behavior with extreme/invalid inputs
