@@ -277,10 +277,12 @@ approx = "0.5"
 ## Code Quality Issues (Found by Clippy)
 
 ### High Priority
-- [ ] Fix potential panic in KalmanFilter matrix inversion (use proper error handling)
+- [x] DONE: Fix potential panic in KalmanFilter matrix inversion (already uses try_inverse)
 - [x] DONE: Fix suspicious operation grouping in SecondOrderLowPassFilter (line 96)
 - [ ] Add proper error handling for all unwrap() calls in tests
-- [ ] Handle partial_cmp unwrap calls in sort operations
+- [ ] Handle usize to i32 casts that may wrap on 32-bit systems
+- [ ] Add more backticks to documentation items (OpenCV, PnP, window_size)
+- [x] DONE: Handle partial_cmp unwrap calls in sort operations
 
 ### Medium Priority
 - [x] DONE: Fix clippy lint group priorities in Cargo.toml
@@ -301,8 +303,8 @@ approx = "0.5"
 ## Missing Tests
 
 ### Unit Tests
-- [ ] Test refine_boxes edge cases (empty boxes, negative values)
-- [ ] Test filter reset functionality for all filters
+- [x] DONE: Test refine_boxes edge cases (empty boxes, negative values)
+- [x] DONE: Test filter reset functionality for all filters
 - [ ] Test MovementDetector with edge cases
 - [ ] Test PoseEstimator::parse_model_points with invalid input
 - [ ] Test error handling in all modules
@@ -311,3 +313,35 @@ approx = "0.5"
 - [ ] Test filter chain with multiple filters
 - [ ] Test pose estimation with real landmark data
 - [ ] Test movement detection with real pose data
+
+## New Code Quality Issues Found
+
+### Performance Considerations
+- [ ] Consider using SmallVec for small collections in filters
+- [ ] Profile VecDeque vs Vec performance for fixed-size buffers
+- [ ] Investigate SIMD opportunities in filter calculations
+- [ ] Consider zero-copy optimizations for OpenCV Mat operations
+
+### Architecture Improvements
+- [ ] Create builder pattern for filter configuration
+- [ ] Add filter parameter validation (window sizes, thresholds)
+- [ ] Implement filter chain/pipeline abstraction
+- [ ] Add debug/visualization traits for filters
+
+### Missing Features
+- [ ] Add filter parameter auto-tuning
+- [ ] Implement adaptive filtering based on movement
+- [ ] Add confidence scores to pose estimates
+- [ ] Implement robust outlier rejection in pose estimation
+
+### Code Maintainability
+- [ ] Extract magic numbers to named constants (30 FPS assumption)
+- [ ] Add configuration struct for default filter parameters
+- [ ] Create factory methods with sensible defaults
+- [ ] Add comprehensive examples in documentation
+
+### Testing Improvements
+- [ ] Add property-based tests for filters
+- [ ] Test filter behavior with extreme values (infinity, NaN)
+- [ ] Add benchmarks comparing filter performance
+- [ ] Test thread safety of filters (Send + Sync traits)
