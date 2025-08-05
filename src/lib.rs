@@ -35,4 +35,7 @@ pub mod error;
 /// Main application module
 pub mod app;
 
+/// Cursor control module for X11 systems
+pub mod cursor_control;
+
 pub use error::{Error, Result};

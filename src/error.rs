@@ -40,7 +40,14 @@ pub enum Error {
     /// Movement detection algorithm error
     #[error("Movement detection error: {0}")]
     MovementDetectionError(String),
+    
+    /// Cursor control operation failed
+    #[error("Cursor control error: {0}")]
+    CursorControl(String),
 }
+
+/// Application-specific error type (alias for main Error type)
+pub type AppError = Error;
 
 /// Convenience type alias for Results with our Error type
 pub type Result<T> = std::result::Result<T, Error>;

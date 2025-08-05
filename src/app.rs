@@ -1,6 +1,7 @@
 //! Main application module for head pose estimation.
 
 use crate::{
+    cursor_control::CursorController,
     error::Result,
     face_detection::{FaceDetector, FaceDetection},
     filters::{create_filter, CursorFilter},
@@ -118,6 +119,7 @@ pub struct HeadPoseApp {
     cursor_filter: Option<Box<dyn CursorFilter>>,
     video_capture: VideoCapture,
     is_moving: bool,
+    cursor_controller: Option<CursorController>,
 }
 
 impl HeadPoseApp {
@@ -164,12 +166,23 @@ impl HeadPoseApp {
             None
         };
 
-        // Initialize cursor filter
-        let cursor_filter = match &config.cursor_mode {
-            CursorMode::None => None,
+        // Initialize cursor filter and controller
+        let (cursor_filter, cursor_controller) = match &config.cursor_mode {
+            CursorMode::None => (None, None),
             CursorMode::Absolute(filter_name) => {
                 info!("Cursor control enabled with {} filter", filter_name);
-                Some(create_filter(filter_name)?)
+                let filter = Some(create_filter(filter_name)?);
+                let controller = match CursorController::new() {
+                    Ok(c) => {
+                        info!("X11 cursor control initialized");
+                        Some(c)
+                    }
+                    Err(e) => {
+                        warn!("Failed to initialize cursor control: {}", e);
+                        None
+                    }
+                };
+                (filter, controller)
             }
         };
 
@@ -193,6 +206,7 @@ impl HeadPoseApp {
             cursor_filter,
             video_capture,
             is_moving: false,
+            cursor_controller,
         })
     }
 
@@ -379,12 +393,43 @@ impl HeadPoseApp {
         };
 
         // Apply filter if available
-        if let Some(filter) = &mut self.cursor_filter {
-            let filtered = filter.apply(raw_x, raw_y);
-            Ok(Some(filtered))
+        let (cursor_x, cursor_y) = if let Some(filter) = &mut self.cursor_filter {
+            filter.apply(raw_x, raw_y)
         } else {
-            Ok(Some((raw_x, raw_y)))
+            (raw_x, raw_y)
+        };
+        
+        // Move cursor if controller is available and conditions are met
+        if let Some(controller) = &self.cursor_controller {
+            // Check movement condition if cursor_still is enabled
+            if !self.config.cursor_still || self.is_moving {
+                // Map normalized coordinates to screen coordinates
+                let (screen_width, screen_height) = controller.get_screen_size();
+                
+                if self.config.cursor_relative {
+                    // Relative mode - use cursor values as velocity
+                    let scale = 5.0; // Sensitivity factor
+                    let dx = (cursor_x * scale) as i16;
+                    let dy = (cursor_y * scale) as i16;
+                    
+                    if dx != 0 || dy != 0 {
+                        controller.move_relative(dx, dy)?;
+                    }
+                } else {
+                    // Absolute mode - map to screen position
+                    // Transform from [-0.5, 0.5] to [0, 1]
+                    let norm_x = (cursor_x + 0.5).clamp(0.0, 1.0);
+                    let norm_y = (cursor_y + 0.5).clamp(0.0, 1.0);
+                    
+                    let screen_x = (norm_x * screen_width as f64) as i16;
+                    let screen_y = (norm_y * screen_height as f64) as i16;
+                    
+                    controller.set_position(screen_x, screen_y)?;
+                }
+            }
         }
+        
+        Ok(Some((cursor_x, cursor_y)))
     }
 
     /// Display results in GUI windows
