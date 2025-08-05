@@ -8,6 +8,15 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
+/// Default SCRFD model input size
+const DEFAULT_INPUT_SIZE: i32 = 640;
+
+/// Maximum number of cached anchor centers to prevent unbounded memory growth
+const MAX_ANCHOR_CACHE_SIZE: usize = 100;
+
+/// Number of facial keypoints detected by SCRFD
+const NUM_FACE_KEYPOINTS: usize = 5;
+
 /// Face detection result
 #[derive(Debug, Clone)]
 pub struct FaceDetection {
@@ -22,7 +31,9 @@ pub struct FaceDetection {
 /// SCRFD Face Detector using `ONNX` Runtime
 pub struct FaceDetector {
     session: Session,
+    #[allow(dead_code)] // Reserved for future named tensor support
     input_name: String,
+    #[allow(dead_code)] // Reserved for future named tensor support
     output_names: Vec<String>,
     input_size: (i32, i32),
     conf_threshold: f32,
@@ -58,12 +69,12 @@ impl FaceDetector {
         
         // Extract input size from shape [batch, channels, height, width]
         let input_size = if input_shape.len() >= 4 {
-            // Note: dimensions are Option<i64>, we need to handle this properly
-            let height = input_shape[2].unwrap_or(640) as i32;
-            let width = input_shape[3].unwrap_or(640) as i32;
+            // Note: dimensions are Option<u32>, we need to handle this properly
+            let height = input_shape[2].unwrap_or(DEFAULT_INPUT_SIZE as u32) as i32;
+            let width = input_shape[3].unwrap_or(DEFAULT_INPUT_SIZE as u32) as i32;
             (width, height)
         } else {
-            (640, 640) // Default SCRFD input size
+            (DEFAULT_INPUT_SIZE, DEFAULT_INPUT_SIZE)
         };
 
         // Get output names
@@ -230,7 +241,8 @@ impl FaceDetector {
             // Extract scores
             let scores_output = outputs[idx].try_extract::<f32>()?;
             let scores_view = scores_output.view();
-            let scores_flat = scores_view.as_slice().unwrap();
+            let scores_flat = scores_view.as_slice()
+                .ok_or_else(|| crate::error::Error::ModelError("Failed to get scores as slice".to_string()))?;
             let scores = Array1::from(scores_flat.to_vec());
             
             // Extract bbox predictions
@@ -239,7 +251,9 @@ impl FaceDetector {
             let bbox_view = bbox_output.view();
             let bbox_shape = bbox_view.shape();
             let n_anchors = bbox_shape[0] * bbox_shape[1] * bbox_shape[2];
-            let bbox_data: Vec<f32> = bbox_view.as_slice().unwrap()
+            let bbox_slice = bbox_view.as_slice()
+                .ok_or_else(|| crate::error::Error::ModelError("Failed to get bbox data as slice".to_string()))?;
+            let bbox_data: Vec<f32> = bbox_slice
                 .iter()
                 .map(|&x| x * stride as f32)
                 .collect();
@@ -254,8 +268,8 @@ impl FaceDetector {
             let anchor_centers = if let Some(centers) = self.center_cache.get(&key) {
                 centers.clone()
             } else {
-                let centers = self.generate_anchor_centers(height, width, stride);
-                if self.center_cache.len() < 100 {
+                let centers = self.generate_anchor_centers(height, width, stride)?;
+                if self.center_cache.len() < MAX_ANCHOR_CACHE_SIZE {
                     self.center_cache.insert(key, centers.clone());
                 }
                 centers
@@ -289,14 +303,16 @@ impl FaceDetector {
                 let kps_idx = idx + self.offset * 2;
                 let kps_output = outputs[kps_idx].try_extract::<f32>()?;
                 let kps_view = kps_output.view();
-                let kps_data: Vec<f32> = kps_view.as_slice().unwrap()
+                let kps_slice = kps_view.as_slice()
+                    .ok_or_else(|| crate::error::Error::ModelError("Failed to get keypoints data as slice".to_string()))?;
+                let kps_data: Vec<f32> = kps_slice
                     .iter()
                     .map(|&x| x * stride as f32)
                     .collect();
                 
                 let kpss = self.distance_to_kps_array(&anchor_centers, &kps_data, None)?;
                 let pos_kpss = Array3::from_shape_vec(
-                    (pos_inds.len(), 5, 2),
+                    (pos_inds.len(), NUM_FACE_KEYPOINTS, 2),
                     pos_inds.iter()
                         .flat_map(|&i| kpss.slice(s![i, .., ..]).iter().cloned().collect::<Vec<f32>>())
                         .collect(),
@@ -310,7 +326,7 @@ impl FaceDetector {
     }
     
     /// Generate anchor centers for a given stride
-    fn generate_anchor_centers(&self, height: i32, width: i32, stride: i32) -> Array2<f32> {
+    fn generate_anchor_centers(&self, height: i32, width: i32, stride: i32) -> Result<Array2<f32>> {
         let mut centers = Vec::new();
         
         for y in 0..height {
@@ -332,7 +348,7 @@ impl FaceDetector {
         
         let n_points = (height * width * self.num_anchors as i32) as usize;
         Array2::from_shape_vec((n_points, 2), centers)
-            .expect("Failed to create anchor centers array")
+            .map_err(|e| crate::error::Error::ModelError(format!("Failed to create anchor centers array: {}", e)))
     }
     
     /// Convert distance predictions to bounding boxes (array version)
@@ -532,7 +548,7 @@ impl FaceDetector {
     /// Helper function to concatenate 3D arrays along axis 0
     fn concatenate_3d(&self, arrays: &[Array3<f32>]) -> Result<Array3<f32>> {
         if arrays.is_empty() {
-            return Ok(Array3::zeros((0, 5, 2)));
+            return Ok(Array3::zeros((0, NUM_FACE_KEYPOINTS, 2)));
         }
         
         let total_rows: usize = arrays.iter().map(|a| a.shape()[0]).sum();
@@ -557,7 +573,7 @@ impl FaceDetector {
         max_shape: Option<(i32, i32)>,
     ) -> Result<Array3<f32>> {
         let n_points = points.shape()[0];
-        let n_kps = 5; // 5 keypoints for face
+        let n_kps = NUM_FACE_KEYPOINTS;
         let mut kpss = Array3::zeros((n_points, n_kps, 2));
         
         for i in 0..n_points {

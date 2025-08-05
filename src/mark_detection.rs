@@ -7,10 +7,18 @@ use ort::{Environment, Session, Value};
 use std::path::Path;
 use std::sync::Arc;
 
+/// Default landmark detector input size
+const DEFAULT_LANDMARK_INPUT_SIZE: i32 = 128;
+
+/// Number of facial landmarks detected
+const NUM_LANDMARKS: usize = 68;
+
 /// Facial landmark detector using `ONNX` Runtime
 pub struct MarkDetector {
     session: Session,
+    #[allow(dead_code)] // Reserved for future named tensor support
     input_name: String,
+    #[allow(dead_code)] // Reserved for future named tensor support
     output_name: String,
     input_size: i32,
 }
@@ -43,7 +51,7 @@ impl MarkDetector {
             .clone();
 
         // Default landmark model input size
-        let input_size = 128;
+        let input_size = DEFAULT_LANDMARK_INPUT_SIZE;
 
         Ok(Self { 
             session, 
@@ -155,7 +163,7 @@ impl MarkDetector {
     /// Convert model output to landmark points
     fn postprocess(&self, marks: Array1<f32>, face_images: &[&Mat]) -> Result<Vec<Vec<Point2f>>> {
         let batch_size = face_images.len();
-        let n_landmarks = 68;
+        let n_landmarks = NUM_LANDMARKS;
         let n_coords = 2; // x, y
         
         let mut results = Vec::new();
@@ -187,11 +195,12 @@ impl MarkDetector {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
     fn test_landmark_count() {
-        // When implemented, should return exactly 68 landmarks
+        // When implemented, should return exactly NUM_LANDMARKS landmarks
         // This is a placeholder test
-        assert_eq!(68, 68);
+        assert_eq!(NUM_LANDMARKS, NUM_LANDMARKS);
     }
 }
