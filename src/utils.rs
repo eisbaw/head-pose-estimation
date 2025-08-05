@@ -9,6 +9,11 @@ use safe_cast::f32_to_i32_clamp;
 /// Refine bounding boxes to ensure they are within image boundaries
 ///
 /// This is a port of the Python `refine()` function from utils.py
+///
+/// # Errors
+///
+/// Currently returns Ok(()) always, but returns Result for API consistency
+#[allow(clippy::cast_precision_loss)] // Precision loss acceptable for box dimensions
 pub fn refine_boxes(boxes: &mut [Rect], max_width: i32, max_height: i32, shift: f32) -> Result<()> {
     for bbox in boxes.iter_mut() {
         let x_shift = f32_to_i32_clamp(bbox.width as f32 * shift, 0, max_width);

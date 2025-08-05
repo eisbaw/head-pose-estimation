@@ -38,4 +38,7 @@ pub mod app;
 /// Cursor control module for X11 systems
 pub mod cursor_control;
 
+/// Constants used throughout the application
+pub mod constants;
+
 pub use error::{Error, Result};

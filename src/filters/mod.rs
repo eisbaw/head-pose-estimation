@@ -61,6 +61,12 @@ impl CursorFilter for NoFilter {
 /// - `lowpass:cutoff` - First-order low-pass filter (default: 0.5)
 /// - `secondorderlowpass:cutoff:damping` - Second-order low-pass (default: 30.0:0.707)
 /// - `hampel:window:threshold` - Hampel filter (default: 5:3.0)
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The filter type is not recognized
+/// - The filter parameters are invalid
 pub fn create_filter(filter_type: &str) -> Result<Box<dyn CursorFilter>> {
     let parts: Vec<&str> = filter_type.split(':').collect();
     let filter_name = parts[0].to_lowercase();

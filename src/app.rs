@@ -38,6 +38,7 @@ pub struct CursorConfig {
 
 impl CursorConfig {
     /// Create new cursor configuration
+    #[must_use]
     pub const fn new(movement_threshold: bool, relative_mode: bool) -> Self {
         Self { movement_threshold, relative_mode }
     }
@@ -54,6 +55,7 @@ pub struct DisplayConfig {
 
 impl DisplayConfig {
     /// Create new display configuration
+    #[must_use]
     pub const fn new(show_all_filters: bool, debug: bool) -> Self {
         Self { show_all_filters, debug }
     }
@@ -162,6 +164,14 @@ pub struct HeadPoseApp {
 
 impl HeadPoseApp {
     /// Create a new head pose estimation application
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Video capture initialization fails
+    /// - Model loading fails
+    /// - Filter creation fails
+    /// - Cursor controller initialization fails
     pub fn new(config: AppConfig) -> Result<Self> {
         info!("Initializing Head Pose Estimation application");
 
@@ -277,6 +287,14 @@ impl HeadPoseApp {
     }
 
     /// Run the main application loop
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Frame capture fails
+    /// - Face/landmark detection fails
+    /// - Pose estimation fails
+    /// - OpenCV operations fail
     pub fn run(&mut self) -> Result<()> {
         info!("Starting main application loop");
         

@@ -1,4 +1,7 @@
-use crate::{Result, utils::safe_cast::{usize_to_i32, f32_to_i32_clamp}};
+use crate::{
+    constants::{IMAGE_NORMALIZATION_OFFSET, IMAGE_NORMALIZATION_SCALE},
+    Result, utils::safe_cast::{usize_to_i32, f32_to_i32_clamp}
+};
 use ndarray::{s, Array1, Array2, Array3, Array4, CowArray};
 use opencv::core::{Mat, Point2f, Rect, Scalar, Size, CV_32F};
 use opencv::imgproc::{self, InterpolationFlags};
@@ -50,6 +53,13 @@ pub struct FaceDetector {
 
 impl FaceDetector {
     /// Create a new face detector from an `ONNX` model file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The ONNX model file cannot be loaded
+    /// - The model has an unexpected structure
+    /// - The ONNX runtime environment cannot be created
     #[allow(clippy::too_many_lines)]
     pub fn new<P: AsRef<Path>>(model_path: P, conf_threshold: f32, nms_threshold: f32) -> Result<Self> {
         log::info!("Initializing FaceDetector with model: {}", model_path.as_ref().display());
@@ -117,6 +127,15 @@ impl FaceDetector {
     }
 
     /// Detect faces in an image
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The image preprocessing fails
+    /// - The ONNX model inference fails
+    /// - The output tensor has an unexpected shape
+    #[allow(clippy::cast_precision_loss)] // Precision loss acceptable for image dimensions
+    #[allow(clippy::cast_sign_loss)] // OpenCV dimensions are positive
     pub fn detect(&mut self, image: &Mat) -> Result<Vec<FaceDetection>> {
         // Get image dimensions
         let img_height = image.rows();
@@ -180,6 +199,7 @@ impl FaceDetector {
     }
     
     /// Preprocess image for `ONNX` model
+    #[allow(clippy::cast_sign_loss)] // OpenCV dimensions are positive
     fn preprocess(image: &Mat) -> Result<Array4<f32>> {
         // Convert BGR to RGB and normalize
         let mut rgb_image = Mat::default();
@@ -204,7 +224,7 @@ impl FaceDetector {
                     // Access pixel value safely
                     // For 3-channel image, access as Vec3f
                     let pixel = float_image.at_2d::<opencv::core::Vec3f>(usize_to_i32(row)?, usize_to_i32(col)?)?[ch];
-                    data[idx] = (pixel - 127.5) / 128.0;
+                    data[idx] = (pixel - IMAGE_NORMALIZATION_OFFSET) / IMAGE_NORMALIZATION_SCALE;
                 }
             }
         }
@@ -344,6 +364,8 @@ impl FaceDetector {
     }
     
     /// Generate anchor centers for a given stride
+    #[allow(clippy::cast_precision_loss)] // Precision loss acceptable for pixel coordinates
+    #[allow(clippy::cast_sign_loss)] // Dimensions are positive
     fn generate_anchor_centers(&self, height: i32, width: i32, stride: i32) -> Result<Array2<f32>> {
         let mut centers = Vec::new();
         

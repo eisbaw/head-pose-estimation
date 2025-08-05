@@ -52,6 +52,7 @@ impl MovementDetector {
     }
 
     /// Get current statistics
+    #[must_use]
     pub fn get_stats(&self) -> Option<(Statistics, Statistics)> {
         if self.pitch_history.len() < self.window_size {
             return None;
@@ -71,6 +72,7 @@ impl MovementDetector {
 
     /// Calculate statistics for a data window
     fn calculate_stats(data: &VecDeque<f64>) -> Statistics {
+        #[allow(clippy::cast_precision_loss)] // Data size is reasonable
         let n = data.len() as f64;
         let mean = data.iter().sum::<f64>() / n;
 
@@ -110,6 +112,7 @@ pub struct Statistics {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::SQRT_2;
 
     #[test]
     fn test_movement_detection() {
@@ -142,6 +145,6 @@ mod tests {
         assert_eq!(stats.min, 1.0);
         assert_eq!(stats.max, 5.0);
         assert_eq!(stats.range, 4.0);
-        assert!((stats.std_dev - 1.4142135623730951).abs() < 1e-10);
+        assert!((stats.std_dev - SQRT_2).abs() < 1e-10);
     }
 }

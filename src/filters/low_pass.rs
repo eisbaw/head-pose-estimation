@@ -1,4 +1,5 @@
 use super::CursorFilter;
+use crate::constants::{DEFAULT_FPS, OMEGA_FACTOR};
 
 /// First-order low-pass filter
 pub struct LowPassFilter {
@@ -75,7 +76,7 @@ impl SecondOrderLowPassFilter {
     /// Create a new second-order low-pass filter
     #[must_use]
     pub fn new(cutoff_freq: f64, damping: f64) -> Self {
-        let dt = 1.0 / 30.0; // Assume 30 FPS
+        let dt = 1.0 / DEFAULT_FPS;
 
         Self {
             cutoff_freq,
@@ -107,7 +108,7 @@ impl SecondOrderLowPassFilter {
 
 impl CursorFilter for SecondOrderLowPassFilter {
     fn apply(&mut self, pitch: f64, yaw: f64) -> (f64, f64) {
-        let omega = 2.0 * std::f64::consts::PI * self.cutoff_freq;
+        let omega = OMEGA_FACTOR * std::f64::consts::PI * self.cutoff_freq;
 
         if !self.initialized {
             self.pitch_x = pitch;

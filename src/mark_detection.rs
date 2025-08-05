@@ -1,4 +1,7 @@
-use crate::{Result, utils::safe_cast::usize_to_i32};
+use crate::{
+    constants::NUM_FACIAL_LANDMARKS,
+    Result, utils::safe_cast::usize_to_i32
+};
 use ndarray::{Array1, Array4, CowArray};
 use opencv::core::{Mat, Point2f, Size, CV_32F};
 use opencv::imgproc::{self, InterpolationFlags};
@@ -9,9 +12,6 @@ use std::sync::Arc;
 
 /// Default landmark detector input size
 const DEFAULT_LANDMARK_INPUT_SIZE: i32 = 128;
-
-/// Number of facial landmarks detected
-const NUM_LANDMARKS: usize = 68;
 
 /// Facial landmark detector using `ONNX` Runtime
 pub struct MarkDetector {
@@ -25,6 +25,13 @@ pub struct MarkDetector {
 
 impl MarkDetector {
     /// Create a new landmark detector from an `ONNX` model file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The ONNX model file cannot be loaded
+    /// - The model has an unexpected structure
+    /// - The ONNX runtime environment cannot be created
     pub fn new<P: AsRef<Path>>(model_path: P) -> Result<Self> {
         log::info!("Initializing MarkDetector with model: {}", model_path.as_ref().display());
         let environment = Arc::new(
@@ -62,7 +69,12 @@ impl MarkDetector {
         })
     }
 
-    /// Detect 68 facial landmarks in a face region
+    /// Detect facial landmarks in a face region
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The batch detection with a single image fails
     pub fn detect(&self, face_image: &Mat) -> Result<Vec<Point2f>> {
         let images = vec![face_image];
         let results = self.detect_batch(&images)?;
@@ -70,6 +82,13 @@ impl MarkDetector {
     }
 
     /// Batch detection for multiple faces
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Image preprocessing fails
+    /// - The ONNX model inference fails
+    /// - The output tensor has an unexpected shape
     pub fn detect_batch(&self, face_images: &[&Mat]) -> Result<Vec<Vec<Point2f>>> {
         if face_images.is_empty() {
             return Ok(Vec::new());
@@ -86,6 +105,7 @@ impl MarkDetector {
     }
     
     /// Preprocess a batch of images for the model
+    #[allow(clippy::cast_sign_loss)] // OpenCV dimensions are positive
     fn preprocess_batch(&self, images: &[&Mat]) -> Result<Array4<f32>> {
         let batch_size = images.len();
         let size = self.input_size as usize;
@@ -162,9 +182,10 @@ impl MarkDetector {
     }
     
     /// Convert model output to landmark points
+    #[allow(clippy::cast_precision_loss)] // Precision loss acceptable for pixel coordinates
     fn postprocess(&self, marks: &Array1<f32>, face_images: &[&Mat]) -> Vec<Vec<Point2f>> {
         let batch_size = face_images.len();
-        let n_landmarks = NUM_LANDMARKS;
+        let n_landmarks = NUM_FACIAL_LANDMARKS;
         let n_coords = 2; // x, y
         
         let mut results = Vec::new();
@@ -200,8 +221,8 @@ mod tests {
 
     #[test]
     fn test_landmark_count() {
-        // When implemented, should return exactly NUM_LANDMARKS landmarks
+        // When implemented, should return exactly NUM_FACIAL_LANDMARKS landmarks
         // This is a placeholder test
-        assert_eq!(NUM_LANDMARKS, NUM_LANDMARKS);
+        assert_eq!(NUM_FACIAL_LANDMARKS, NUM_FACIAL_LANDMARKS);
     }
 }

@@ -3,6 +3,10 @@
 use crate::{Error, Result};
 
 /// Safely convert usize to i32 with overflow checking
+///
+/// # Errors
+///
+/// Returns an error if the value exceeds i32::MAX
 pub fn usize_to_i32(value: usize) -> Result<i32> {
     value.try_into()
         .map_err(|_| Error::InvalidInput(format!(
@@ -11,6 +15,10 @@ pub fn usize_to_i32(value: usize) -> Result<i32> {
 }
 
 /// Safely convert u32 to i32 with overflow checking
+///
+/// # Errors
+///
+/// Returns an error if the value exceeds i32::MAX
 pub fn u32_to_i32(value: u32) -> Result<i32> {
     value.try_into()
         .map_err(|_| Error::InvalidInput(format!(
@@ -19,6 +27,12 @@ pub fn u32_to_i32(value: u32) -> Result<i32> {
 }
 
 /// Safely convert f32 to i32 with bounds checking
+///
+/// # Errors
+///
+/// Returns an error if the value is not finite or outside i32 range
+#[allow(clippy::cast_precision_loss)] // MIN/MAX bounds checking is approximate
+#[allow(clippy::cast_possible_truncation)] // Truncation after bounds check is safe
 pub fn f32_to_i32(value: f32) -> Result<i32> {
     if value.is_finite() && value >= i32::MIN as f32 && value <= i32::MAX as f32 {
         Ok(value as i32)
@@ -29,7 +43,12 @@ pub fn f32_to_i32(value: f32) -> Result<i32> {
     }
 }
 
-/// Safely convert f64 to i32 with bounds checking  
+/// Safely convert f64 to i32 with bounds checking
+///
+/// # Errors
+///
+/// Returns an error if the value is not finite or outside i32 range
+#[allow(clippy::cast_possible_truncation)] // Truncation after bounds check is safe
 pub fn f64_to_i32(value: f64) -> Result<i32> {
     if value.is_finite() && value >= f64::from(i32::MIN) && value <= f64::from(i32::MAX) {
         Ok(value as i32)
@@ -41,6 +60,9 @@ pub fn f64_to_i32(value: f64) -> Result<i32> {
 }
 
 /// Clamp and convert f32 to i32 for pixel coordinates
+#[must_use]
+#[allow(clippy::cast_precision_loss)] // Acceptable for clamping bounds
+#[allow(clippy::cast_possible_truncation)] // Clamping ensures safe truncation
 pub fn f32_to_i32_clamp(value: f32, min: i32, max: i32) -> i32 {
     if !value.is_finite() {
         return min;

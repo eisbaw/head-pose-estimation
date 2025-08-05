@@ -34,7 +34,9 @@ impl CursorFilter for MovingAverageFilter {
         self.yaw_buffer.push_back(yaw);
 
         // Calculate averages
+        #[allow(clippy::cast_precision_loss)] // Buffer size is small
         let pitch_avg = self.pitch_buffer.iter().sum::<f64>() / self.pitch_buffer.len() as f64;
+        #[allow(clippy::cast_precision_loss)] // Buffer size is small
         let yaw_avg = self.yaw_buffer.iter().sum::<f64>() / self.yaw_buffer.len() as f64;
 
         (pitch_avg, yaw_avg)

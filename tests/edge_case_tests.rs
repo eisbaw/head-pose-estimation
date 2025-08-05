@@ -210,13 +210,18 @@ fn test_filter_impulse_response() {
 
 // Note: Using a simple RNG for test determinism
 mod rand {
-    static mut SEED: u64 = 12345;
+    use std::cell::RefCell;
+    
+    thread_local! {
+        static SEED: RefCell<u64> = RefCell::new(12345);
+    }
     
     #[allow(unused)]  
     pub fn random<T>() -> f64 {
-        unsafe {
-            SEED = SEED.wrapping_mul(1103515245).wrapping_add(12345);
-            ((SEED / 65536) % 32768) as f64 / 32768.0
-        }
+        SEED.with(|seed| {
+            let mut s = seed.borrow_mut();
+            *s = s.wrapping_mul(1103515245).wrapping_add(12345);
+            ((*s / 65536) % 32768) as f64 / 32768.0
+        })
     }
 }

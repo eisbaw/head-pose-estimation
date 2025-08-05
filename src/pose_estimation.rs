@@ -1,4 +1,7 @@
-use crate::{Error, Result, utils::safe_cast::usize_to_i32};
+use crate::{
+    constants::{CAMERA_CENTER_FACTOR, MODEL_POINTS_TOTAL_VALUES, NUM_FACIAL_LANDMARKS},
+    Error, Result, utils::safe_cast::usize_to_i32
+};
 use opencv::{
     calib3d,
     core::{Mat, Point2f, Point3f, Vec3d},
@@ -16,6 +19,13 @@ pub struct PoseEstimator {
 
 impl PoseEstimator {
     /// Create a new pose estimator with 3D model points and camera parameters
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The model file cannot be read
+    /// - The model file has an invalid format
+    /// - OpenCV matrix operations fail
     pub fn new<P: AsRef<Path>>(model_path: P, image_width: i32, image_height: i32) -> Result<Self> {
         log::info!("Initializing PoseEstimator with model: {}", model_path.as_ref().display());
         // Load 3D model points from file
@@ -24,7 +34,7 @@ impl PoseEstimator {
 
         // Initialize camera matrix with typical values
         let focal_length = f64::from(image_width);
-        let center = (f64::from(image_width) / 2.0, f64::from(image_height) / 2.0);
+        let center = (f64::from(image_width) / CAMERA_CENTER_FACTOR, f64::from(image_height) / CAMERA_CENTER_FACTOR);
 
         // Create camera matrix using zeros and then fill it
         let mut camera_matrix = Mat::zeros(3, 3, opencv::core::CV_64F)?.to_mat()?;
@@ -48,10 +58,18 @@ impl PoseEstimator {
     }
 
     /// Estimate head pose from 68 facial landmarks
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The number of landmarks is not exactly 68
+    /// - The PnP solver fails to converge
+    /// - OpenCV operations fail
     pub fn estimate_pose(&self, landmarks: &[(f32, f32)]) -> Result<(Vec3d, Vec3d, Mat)> {
-        if landmarks.len() != 68 {
+        if landmarks.len() != NUM_FACIAL_LANDMARKS {
             return Err(Error::InvalidInput(format!(
-                "Expected 68 landmarks, got {}",
+                "Expected {} landmarks, got {}",
+                NUM_FACIAL_LANDMARKS,
                 landmarks.len()
             )));
         }
@@ -132,9 +150,11 @@ impl PoseEstimator {
             .filter_map(|line| line.trim().parse::<f32>().ok())
             .collect();
         
-        if values.len() != 204 {
+        if values.len() != MODEL_POINTS_TOTAL_VALUES {
             return Err(Error::ModelError(format!(
-                "Expected 204 coordinate values (68 points × 3), got {}",
+                "Expected {} coordinate values ({} points × 3), got {}",
+                MODEL_POINTS_TOTAL_VALUES,
+                NUM_FACIAL_LANDMARKS,
                 values.len()
             )));
         }
@@ -148,6 +168,11 @@ impl PoseEstimator {
     }
 
     /// Convert rotation matrix to Euler angles
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The matrix access operations fail
     pub fn rotation_matrix_to_euler(rotation_matrix: &Mat) -> Result<Vec3d> {
         // Extract rotation matrix values
         let _r11 = rotation_matrix.at_2d::<f64>(0, 0)?;
@@ -187,16 +212,16 @@ mod tests {
 
     #[test]
     fn test_parse_model_points() {
-        // Valid model data - must be exactly 204 values (68 points × 3)
+        // Valid model data - must be exactly MODEL_POINTS_TOTAL_VALUES values (NUM_FACIAL_LANDMARKS points × 3)
         let mut values = Vec::new();
-        for i in 0..68 {
+        for i in 0..NUM_FACIAL_LANDMARKS {
             values.push(format!("{}.0", i * 3));
             values.push(format!("{}.0", i * 3 + 1));
             values.push(format!("{}.0", i * 3 + 2));
         }
         let valid_data = values.join("\n");
         let points = PoseEstimator::parse_model_points(&valid_data).unwrap();
-        assert_eq!(points.len(), 68);
+        assert_eq!(points.len(), NUM_FACIAL_LANDMARKS);
         assert_eq!(points[0].x, 0.0);
         assert_eq!(points[0].y, 1.0);
         assert_eq!(points[0].z, 2.0);

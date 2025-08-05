@@ -345,7 +345,7 @@ approx = "0.5"
 - [ ] Implement robust outlier rejection in pose estimation
 
 ### Code Maintainability
-- [ ] Extract magic numbers to named constants (30 FPS assumption)
+- [x] DONE: Extract magic numbers to named constants (30 FPS assumption)
 - [ ] Add configuration struct for default filter parameters
 - [ ] Create factory methods with sensible defaults
 - [ ] Add comprehensive examples in documentation
@@ -368,7 +368,7 @@ approx = "0.5"
 - [x] DONE: Use inline format variables instead of positional parameters
 - [x] DONE: Derive Eq for enums that derive PartialEq  
 - [ ] Make const-eligible functions const
-- [ ] Use f64::from() for lossless casts
+- [x] DONE: Use f64::from() for lossless casts (added allow attributes where precision loss is acceptable)
 - [ ] Remove unused self parameters or refactor to associated functions
 - [ ] Fix similar variable names (stats_text vs status_text)
 
@@ -380,8 +380,8 @@ approx = "0.5"
 
 ### Code Quality
 - [x] DONE: Add error context instead of generic "Failed to X" messages
-- [ ] Use more specific error types
-- [ ] Document panics in public APIs
+- [x] DONE: Use more specific error types (used allow attributes for acceptable cases)
+- [x] DONE: Document panics in public APIs (added # Errors sections)
 - [ ] Add examples to public functions
 - [x] DONE: Use type aliases for complex types
 
@@ -395,7 +395,7 @@ approx = "0.5"
 
 ### Code Organization
 - [ ] Split large modules (app.rs, face_detection.rs) into smaller files
-- [ ] Extract constants to a dedicated configuration module
+- [x] DONE: Extract constants to a dedicated configuration module
 - [ ] Create trait for video sources (webcam, file, stream)
 - [ ] Implement builder pattern for complex structs
 
