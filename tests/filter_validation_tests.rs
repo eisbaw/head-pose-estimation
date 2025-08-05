@@ -1,7 +1,7 @@
 //! Tests for filter parameter validation
 
 use head_pose_estimation::filters::{
-    create_filter, CursorFilter,
+    create_filter,
     moving_average::MovingAverageFilter,
     median::MedianFilter,
     exponential::ExponentialFilter,

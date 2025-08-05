@@ -81,7 +81,7 @@ fn main() -> Result<()> {
     info!("Head Pose Estimation - Rust Port");
 
     // Load configuration if provided
-    let mut config_file = if let Some(config_path) = &args.config {
+    let _config_file = if let Some(config_path) = &args.config {
         info!("Loading configuration from: {}", config_path);
         match head_pose_estimation::config::Config::from_file(config_path) {
             Ok(cfg) => Some(cfg),

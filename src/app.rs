@@ -480,8 +480,15 @@ impl HeadPoseApp {
                 (x, y)
             }
             DataSource::NormalProjection => {
-                // TODO: Implement normal projection
-                (0.0, 0.0)
+                // Calculate normal projection from rotation matrix
+                // The normal vector is the third column of the rotation matrix
+                let r13 = *pose.rotation_matrix.at_2d::<f64>(0, 2).unwrap_or(&0.0);
+                let r23 = *pose.rotation_matrix.at_2d::<f64>(1, 2).unwrap_or(&0.0);
+                
+                // Scale the projection for cursor movement
+                // Invert Y to match screen coordinates
+                let scale = 100.0;
+                (r13 * scale, -r23 * scale)
             }
         };
 
@@ -539,8 +546,13 @@ impl HeadPoseApp {
                     (x, y)
                 }
                 DataSource::NormalProjection => {
-                    // TODO: Implement normal projection
-                    (0.0, 0.0)
+                    // Calculate normal projection from rotation matrix
+                    let r13 = *pose.rotation_matrix.at_2d::<f64>(0, 2).unwrap_or(&0.0);
+                    let r23 = *pose.rotation_matrix.at_2d::<f64>(1, 2).unwrap_or(&0.0);
+                    
+                    // Scale the projection for cursor movement
+                    let scale = 100.0;
+                    (r13 * scale, -r23 * scale)
                 }
             };
             
@@ -643,6 +655,11 @@ impl HeadPoseApp {
                     
                     // Draw pose axes (simplified visualization using rotation matrix)
                     Self::draw_pose_axes(&mut display_frame, &transformed_landmarks, &pose.rotation_matrix, &pose.translation_vec)?;
+                    
+                    // Draw normal vector when using normal projection
+                    if matches!(self.config.data_source, DataSource::NormalProjection) {
+                        Self::draw_normal_vector(&mut display_frame, &transformed_landmarks, &pose.rotation_matrix, &pose.translation_vec)?;
+                    }
                 }
             }
 
@@ -793,19 +810,36 @@ impl HeadPoseApp {
                         )?;
                     }
                     DataSource::NormalProjection => {
-                        // TODO: Implement normal projection display
-                        let text = "Normal projection not implemented";
-                        imgproc::put_text(
-                            &mut cursor_frame,
-                            text,
-                            Point::new(10, 450),
-                            FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            text_color,
-                            2,
-                            LINE_8,
-                            false,
-                        )?;
+                        // Display normal projection values
+                        if let Some(pose) = result.poses.first() {
+                            let r13 = *pose.rotation_matrix.at_2d::<f64>(0, 2).unwrap_or(&0.0);
+                            let r23 = *pose.rotation_matrix.at_2d::<f64>(1, 2).unwrap_or(&0.0);
+                            let text = format!("Normal: X={:.2} Y={:.2}", r13, r23);
+                            imgproc::put_text(
+                                &mut cursor_frame,
+                                &text,
+                                Point::new(10, 450),
+                                FONT_HERSHEY_SIMPLEX,
+                                0.7,
+                                text_color,
+                                2,
+                                LINE_8,
+                                false,
+                            )?;
+                        } else {
+                            let text = "No face detected";
+                            imgproc::put_text(
+                                &mut cursor_frame,
+                                text,
+                                Point::new(10, 450),
+                                FONT_HERSHEY_SIMPLEX,
+                                0.7,
+                                text_color,
+                                2,
+                                LINE_8,
+                                false,
+                            )?;
+                        }
                     }
                 }
                 
@@ -935,6 +969,62 @@ impl HeadPoseApp {
                 LINE_8,
                 0,
                 0.2,
+            )?;
+        }
+        
+        Ok(())
+    }
+
+    /// Draw normal vector from the face
+    fn draw_normal_vector(
+        frame: &mut Mat,
+        landmarks: &[opencv::core::Point2f],
+        rotation_mat: &Mat,
+        _translation_vec: &Vec3d,
+    ) -> Result<()> {
+        // Use nose tip as origin (landmark 30)
+        if landmarks.len() > 30 {
+            let nose_tip = &landmarks[30];
+            let origin = Point::new(
+                f32_to_i32_clamp(nose_tip.x, i32::MIN, i32::MAX),
+                f32_to_i32_clamp(nose_tip.y, i32::MIN, i32::MAX),
+            );
+            
+            // Define normal vector length (longer than axes for visibility)
+            let normal_length = 100.0;
+            
+            // Get rotation matrix values for Z-axis (normal vector)
+            let r13 = *rotation_mat.at_2d::<f64>(0, 2)?;
+            let r23 = *rotation_mat.at_2d::<f64>(1, 2)?;
+            
+            // Project normal vector to 2D
+            // The normal vector points out of the face (negative Z in face coordinate system)
+            let normal_end = Point::new(
+                origin.x - f64_to_i32(r13 * normal_length).unwrap_or(0),
+                origin.y - f64_to_i32(r23 * normal_length).unwrap_or(0),
+            );
+            
+            // Draw normal vector in cyan color with thicker line
+            imgproc::arrowed_line(
+                frame,
+                origin,
+                normal_end,
+                Scalar::new(255.0, 255.0, 0.0, 0.0), // Cyan (BGR)
+                3,
+                LINE_8,
+                0,
+                0.3,
+            )?;
+            
+            // Draw a small circle at the origin for clarity
+            imgproc::circle(
+                frame,
+                origin,
+                3,
+                Scalar::new(0.0, 255.0, 255.0, 0.0), // Yellow
+                -1,
+                LINE_8,
+                0,
             )?;
         }
         
