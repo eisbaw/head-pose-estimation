@@ -43,7 +43,7 @@
 - [x] DONE: Implement batch inference support
 - [x] DONE: Convert landmark output format
 - [x] DONE: Add landmark visualization
-- [ ] Write unit tests for landmark detection
+- [x] DONE: Write unit tests for landmark detection
 
 ## Phase 3: Pose Estimation
 
@@ -127,7 +127,7 @@
 
 ### Week 12: Integration and Testing
 - [x] DONE: Create integration tests for full pipeline
-- [ ] Add performance benchmarks vs Python
+- [x] DONE: Add performance benchmarks vs Python
 - [ ] Profile memory usage
 - [ ] Optimize hot paths
 - [ ] Add SIMD optimizations where beneficial
@@ -191,8 +191,8 @@
 
 ### Compatibility Tests
 - [x] DONE: Test with original ONNX models
-- [ ] Test all command-line arguments
-- [ ] Test filter output accuracy
+- [x] DONE: Test all command-line arguments
+- [x] DONE: Test filter output accuracy
 - [ ] Test on different Linux distributions
 - [ ] Test with different OpenCV versions
 

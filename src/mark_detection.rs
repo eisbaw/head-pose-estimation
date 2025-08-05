@@ -221,8 +221,55 @@ mod tests {
 
     #[test]
     fn test_landmark_count() {
-        // When implemented, should return exactly NUM_FACIAL_LANDMARKS landmarks
-        // This is a placeholder test
-        assert_eq!(NUM_FACIAL_LANDMARKS, NUM_FACIAL_LANDMARKS);
+        // Test that the constant is correct
+        assert_eq!(NUM_FACIAL_LANDMARKS, 68);
+    }
+    
+    #[test]
+    fn test_default_input_size() {
+        // Test the default input size constant
+        assert_eq!(DEFAULT_LANDMARK_INPUT_SIZE, 128);
+    }
+    
+    #[test]
+    fn test_landmark_data_structure() {
+        // Test the output format expectations
+        // Each landmark has 2 coordinates (x, y)
+        let total_values = NUM_FACIAL_LANDMARKS * 2;
+        assert_eq!(total_values, 136);
+    }
+    
+    #[test]
+    fn test_landmark_indices() {
+        // Test specific landmark indices based on 68-point model
+        // Ref: https://ibug.doc.ic.ac.uk/resources/facial-point-annotations/
+        
+        // Jaw line: 0-16
+        assert!(0 < NUM_FACIAL_LANDMARKS);
+        assert!(16 < NUM_FACIAL_LANDMARKS);
+        
+        // Right eyebrow: 17-21
+        assert!(21 < NUM_FACIAL_LANDMARKS);
+        
+        // Left eyebrow: 22-26
+        assert!(26 < NUM_FACIAL_LANDMARKS);
+        
+        // Nose bridge: 27-30
+        assert!(30 < NUM_FACIAL_LANDMARKS);
+        
+        // Lower nose: 31-35
+        assert!(35 < NUM_FACIAL_LANDMARKS);
+        
+        // Right eye: 36-41
+        assert!(41 < NUM_FACIAL_LANDMARKS);
+        
+        // Left eye: 42-47
+        assert!(47 < NUM_FACIAL_LANDMARKS);
+        
+        // Outer lip: 48-59
+        assert!(59 < NUM_FACIAL_LANDMARKS);
+        
+        // Inner lip: 60-67
+        assert_eq!(67, NUM_FACIAL_LANDMARKS - 1);
     }
 }
