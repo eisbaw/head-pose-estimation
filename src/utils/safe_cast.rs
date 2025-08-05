@@ -6,7 +6,7 @@ use crate::{Error, Result};
 pub fn usize_to_i32(value: usize) -> Result<i32> {
     value.try_into()
         .map_err(|_| Error::InvalidInput(format!(
-            "Value {} too large to fit in i32", value
+            "Value {value} too large to fit in i32"
         )))
 }
 
@@ -14,7 +14,7 @@ pub fn usize_to_i32(value: usize) -> Result<i32> {
 pub fn u32_to_i32(value: u32) -> Result<i32> {
     value.try_into()
         .map_err(|_| Error::InvalidInput(format!(
-            "Value {} too large to fit in i32", value
+            "Value {value} too large to fit in i32"
         )))
 }
 
@@ -24,18 +24,18 @@ pub fn f32_to_i32(value: f32) -> Result<i32> {
         Ok(value as i32)
     } else {
         Err(Error::InvalidInput(format!(
-            "Value {} cannot be safely converted to i32", value
+            "Value {value} cannot be safely converted to i32"
         )))
     }
 }
 
 /// Safely convert f64 to i32 with bounds checking  
 pub fn f64_to_i32(value: f64) -> Result<i32> {
-    if value.is_finite() && value >= i32::MIN as f64 && value <= i32::MAX as f64 {
+    if value.is_finite() && value >= f64::from(i32::MIN) && value <= f64::from(i32::MAX) {
         Ok(value as i32)
     } else {
         Err(Error::InvalidInput(format!(
-            "Value {} cannot be safely converted to i32", value
+            "Value {value} cannot be safely converted to i32"
         )))
     }
 }

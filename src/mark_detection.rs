@@ -82,7 +82,7 @@ impl MarkDetector {
         let marks = self.forward(preprocessed)?;
         
         // Convert output to landmark points
-        self.postprocess(marks, face_images)
+        Ok(self.postprocess(&marks, face_images))
     }
     
     /// Preprocess a batch of images for the model
@@ -130,7 +130,7 @@ impl MarkDetector {
         let array = Array4::from_shape_vec(
             (batch_size, size, size, channels),
             batch_data,
-        ).map_err(|e| crate::error::Error::ModelError(format!("Failed to create array: {}", e)))?;
+        ).map_err(|e| crate::error::Error::ModelError(format!("Failed to create array: {e}")))?;
         
         // Note: Some models might expect NHWC format, but most expect NCHW
         // If the model expects NCHW, uncomment the following line:
@@ -162,20 +162,20 @@ impl MarkDetector {
     }
     
     /// Convert model output to landmark points
-    fn postprocess(&self, marks: Array1<f32>, face_images: &[&Mat]) -> Result<Vec<Vec<Point2f>>> {
+    fn postprocess(&self, marks: &Array1<f32>, face_images: &[&Mat]) -> Vec<Vec<Point2f>> {
         let batch_size = face_images.len();
         let n_landmarks = NUM_LANDMARKS;
         let n_coords = 2; // x, y
         
         let mut results = Vec::new();
         
-        for i in 0..batch_size {
+        for (i, face_image) in face_images.iter().enumerate().take(batch_size) {
             let mut landmarks = Vec::new();
             let offset = i * n_landmarks * n_coords;
             
             // Get scaling factors from original face image
-            let face_width = face_images[i].cols() as f32;
-            let face_height = face_images[i].rows() as f32;
+            let face_width = face_image.cols() as f32;
+            let face_height = face_image.rows() as f32;
             
             for j in 0..n_landmarks {
                 let idx = offset + j * n_coords;
@@ -190,7 +190,7 @@ impl MarkDetector {
             results.push(landmarks);
         }
         
-        Ok(results)
+        results
     }
 }
 

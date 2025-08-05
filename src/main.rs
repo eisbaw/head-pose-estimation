@@ -3,7 +3,7 @@
 use anyhow::Result;
 use clap::Parser;
 use head_pose_estimation::app::{
-    AppConfig, CursorMode, DataSource, GuiMode, HeadPoseApp, InvertMode, VectorMode, VideoSource,
+    AppConfig, CursorConfig, CursorMode, DataSource, DisplayConfig, GuiMode, HeadPoseApp, InvertMode, VectorMode, VideoSource,
 };
 use log::info;
 
@@ -89,7 +89,7 @@ fn main() -> Result<()> {
             CursorMode::None
         },
         filter_type: args.filter,
-        show_all_filters: args.cursor_filter_all,
+        display: DisplayConfig::new(args.cursor_filter_all, args.debug),
         gui_mode: match args.gui.as_str() {
             "all" => GuiMode::All,
             "pointers" => GuiMode::Pointers,
@@ -104,7 +104,6 @@ fn main() -> Result<()> {
             _ => InvertMode::None,
         },
         brightness: args.brightness,
-        debug: args.debug,
         data_source: match args.datasource.as_str() {
             "normalproj" => DataSource::NormalProjection,
             _ => DataSource::PitchYaw,
@@ -113,8 +112,7 @@ fn main() -> Result<()> {
             "speed" => VectorMode::Speed,
             _ => VectorMode::Location,
         },
-        cursor_still: args.cursor_still,
-        cursor_relative: args.cursor_relative,
+        cursor_config: CursorConfig::new(args.cursor_still, args.cursor_relative),
     };
 
     // Create and run application

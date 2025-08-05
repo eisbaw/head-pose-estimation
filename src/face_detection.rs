@@ -162,25 +162,25 @@ impl FaceDetector {
         resized.copy_to(&mut roi)?;
         
         // Preprocess image
-        let inputs = self.preprocess(&det_img)?;
+        let inputs = Self::preprocess(&det_img)?;
         
         // Run inference
         let (scores_list, bboxes_list, kpss_list) = self.forward(inputs, self.conf_threshold)?;
         
         // Postprocess results
         let detections = self.postprocess(
-            scores_list,
-            bboxes_list,
-            kpss_list,
+            &scores_list,
+            &bboxes_list,
+            &kpss_list,
             det_scale,
             (img_width, img_height),
-        )?;
+        );
         
         Ok(detections)
     }
     
     /// Preprocess image for `ONNX` model
-    fn preprocess(&self, image: &Mat) -> Result<Array4<f32>> {
+    fn preprocess(image: &Mat) -> Result<Array4<f32>> {
         // Convert BGR to RGB and normalize
         let mut rgb_image = Mat::default();
         imgproc::cvt_color(image, &mut rgb_image, imgproc::COLOR_BGR2RGB, 0)?;
@@ -211,7 +211,7 @@ impl FaceDetector {
         
         // Reshape to NCHW format
         let mut array = Array4::from_shape_vec((1, height, width, channels), data)
-            .map_err(|e| crate::error::Error::ModelError(format!("Failed to create array: {}", e)))?;
+            .map_err(|e| crate::error::Error::ModelError(format!("Failed to create array: {e}")))?;
         
         // Transpose from NHWC to NCHW
         array = array.permuted_axes([0, 3, 1, 2]);
@@ -246,7 +246,7 @@ impl FaceDetector {
             let scores_output = outputs[idx].try_extract::<f32>()?;
             let scores_view = scores_output.view();
             let scores_flat = scores_view.as_slice()
-                .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract scores as slice for stride {} at output index {}", stride, idx)))?;
+                .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract scores as slice for stride {stride} at output index {idx}")))?;
             let scores = Array1::from(scores_flat.to_vec());
             
             // Extract bbox predictions
@@ -270,13 +270,13 @@ impl FaceDetector {
                 )));
             };
             let bbox_slice = bbox_view.as_slice()
-                .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract bbox data as slice for stride {} at output index {}", stride, bbox_idx)))?;
+                .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract bbox data as slice for stride {stride} at output index {bbox_idx}")))?;
             let bbox_data: Vec<f32> = bbox_slice
                 .iter()
                 .map(|&x| x * stride as f32)
                 .collect();
             let bboxes = Array2::from_shape_vec((n_anchors, 4), bbox_data)
-                .map_err(|e| crate::error::Error::ModelError(format!("Failed to reshape bbox: {}", e)))?;
+                .map_err(|e| crate::error::Error::ModelError(format!("Failed to reshape bbox: {e}")))?;
             
             // Generate anchor centers
             let height = input_height / stride;
@@ -300,7 +300,7 @@ impl FaceDetector {
                 .collect();
             
             // Convert distances to bboxes
-            let decoded_bboxes = self.distance_to_bbox_array(&anchor_centers, &bboxes, None);
+            let decoded_bboxes = Self::distance_to_bbox_array(&anchor_centers, &bboxes, None);
             
             // Collect positive detections
             let pos_scores = Array1::from(
@@ -311,7 +311,7 @@ impl FaceDetector {
                 pos_inds.iter()
                     .flat_map(|&i| decoded_bboxes.row(i).to_vec())
                     .collect(),
-            ).map_err(|e| crate::error::Error::ModelError(format!("Failed to collect bboxes: {}", e)))?;
+            ).map_err(|e| crate::error::Error::ModelError(format!("Failed to collect bboxes: {e}")))?;
             
             scores_list.push(pos_scores);
             bboxes_list.push(pos_bboxes);
@@ -322,19 +322,19 @@ impl FaceDetector {
                 let kps_output = outputs[kps_idx].try_extract::<f32>()?;
                 let kps_view = kps_output.view();
                 let kps_slice = kps_view.as_slice()
-                    .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract keypoints data as slice for stride {} at output index {}", stride, kps_idx)))?;
+                    .ok_or_else(|| crate::error::Error::ModelError(format!("Failed to extract keypoints data as slice for stride {stride} at output index {kps_idx}")))?;
                 let kps_data: Vec<f32> = kps_slice
                     .iter()
                     .map(|&x| x * stride as f32)
                     .collect();
                 
-                let kpss = self.distance_to_kps_array(&anchor_centers, &kps_data, None)?;
+                let kpss = Self::distance_to_kps_array(&anchor_centers, &kps_data, None);
                 let pos_kpss = Array3::from_shape_vec(
                     (pos_inds.len(), NUM_FACE_KEYPOINTS, 2),
                     pos_inds.iter()
                         .flat_map(|&i| kpss.slice(s![i, .., ..]).iter().copied().collect::<Vec<f32>>())
                         .collect(),
-                ).map_err(|e| crate::error::Error::ModelError(format!("Failed to collect kpss: {}", e)))?;
+                ).map_err(|e| crate::error::Error::ModelError(format!("Failed to collect kpss: {e}")))?;
                 
                 kpss_list.push(pos_kpss);
             }
@@ -366,12 +366,11 @@ impl FaceDetector {
         
         let n_points = (height as usize) * (width as usize) * self.num_anchors;
         Array2::from_shape_vec((n_points, 2), centers)
-            .map_err(|e| crate::error::Error::ModelError(format!("Failed to create anchor centers array: {}", e)))
+            .map_err(|e| crate::error::Error::ModelError(format!("Failed to create anchor centers array: {e}")))
     }
     
     /// Convert distance predictions to bounding boxes (array version)
     fn distance_to_bbox_array(
-        &self,
         points: &Array2<f32>,
         distances: &Array2<f32>,
         max_shape: Option<(i32, i32)>,
@@ -407,15 +406,15 @@ impl FaceDetector {
     /// Postprocess model outputs to get final detections
     fn postprocess(
         &self,
-        scores_list: Vec<Array1<f32>>,
-        bboxes_list: Vec<Array2<f32>>,
-        kpss_list: Vec<Array3<f32>>,
+        scores_list: &[Array1<f32>],
+        bboxes_list: &[Array2<f32>],
+        kpss_list: &[Array3<f32>],
         det_scale: f32,
         _img_shape: (i32, i32),
-    ) -> Result<Vec<FaceDetection>> {
+    ) -> Vec<FaceDetection> {
         // Concatenate all detections
-        let all_scores = self.concatenate_1d(&scores_list)?;
-        let all_bboxes = self.concatenate_2d(&bboxes_list)?;
+        let all_scores = Self::concatenate_1d(scores_list);
+        let all_bboxes = Self::concatenate_2d(bboxes_list);
         
         // Sort by score
         let mut indices: Vec<usize> = (0..all_scores.len()).collect();
@@ -427,7 +426,7 @@ impl FaceDetector {
         let scaled_bboxes: Array2<f32> = &all_bboxes / det_scale;
         
         // Apply NMS
-        let keep = self.nms(&scaled_bboxes, &all_scores, &indices)?;
+        let keep = self.nms(&scaled_bboxes, &all_scores, &indices);
         
         // Collect final detections
         let mut detections = Vec::new();
@@ -445,7 +444,7 @@ impl FaceDetector {
             
             // Handle keypoints if available
             let keypoints = if self.with_kps && !kpss_list.is_empty() {
-                let all_kpss = self.concatenate_3d(&kpss_list)?;
+                let all_kpss = Self::concatenate_3d(kpss_list);
                 let kps = all_kpss.slice(s![orig_idx, .., ..]);
                 Some(
                     (0..5)
@@ -466,7 +465,7 @@ impl FaceDetector {
             });
         }
         
-        Ok(detections)
+        detections
     }
     
     /// Non-Maximum Suppression (`NMS`)
@@ -475,7 +474,7 @@ impl FaceDetector {
         bboxes: &Array2<f32>,
         _scores: &Array1<f32>,
         order: &[usize],
-    ) -> Result<Vec<usize>> {
+    ) -> Vec<usize> {
         let mut keep = Vec::new();
         let mut order = order.to_vec();
         
@@ -521,16 +520,16 @@ impl FaceDetector {
             order = remaining;
         }
         
-        Ok(keep)
+        keep
     }
     
     /// Helper function to concatenate 1D arrays
-    fn concatenate_1d(&self, arrays: &[Array1<f32>]) -> Result<Array1<f32>> {
+    fn concatenate_1d(arrays: &[Array1<f32>]) -> Array1<f32> {
         if arrays.is_empty() {
-            return Ok(Array1::zeros(0));
+            return Array1::zeros(0);
         }
         
-        let total_len: usize = arrays.iter().map(|a| a.len()).sum();
+        let total_len: usize = arrays.iter().map(ndarray::ArrayBase::len).sum();
         let mut result = Array1::zeros(total_len);
         
         let mut offset = 0;
@@ -540,13 +539,13 @@ impl FaceDetector {
             offset += len;
         }
         
-        Ok(result)
+        result
     }
     
     /// Helper function to concatenate 2D arrays along axis 0
-    fn concatenate_2d(&self, arrays: &[Array2<f32>]) -> Result<Array2<f32>> {
+    fn concatenate_2d(arrays: &[Array2<f32>]) -> Array2<f32> {
         if arrays.is_empty() {
-            return Ok(Array2::zeros((0, 4)));
+            return Array2::zeros((0, 4));
         }
         
         let total_rows: usize = arrays.iter().map(|a| a.shape()[0]).sum();
@@ -560,13 +559,13 @@ impl FaceDetector {
             offset += rows;
         }
         
-        Ok(result)
+        result
     }
     
     /// Helper function to concatenate 3D arrays along axis 0
-    fn concatenate_3d(&self, arrays: &[Array3<f32>]) -> Result<Array3<f32>> {
+    fn concatenate_3d(arrays: &[Array3<f32>]) -> Array3<f32> {
         if arrays.is_empty() {
-            return Ok(Array3::zeros((0, NUM_FACE_KEYPOINTS, 2)));
+            return Array3::zeros((0, NUM_FACE_KEYPOINTS, 2));
         }
         
         let total_rows: usize = arrays.iter().map(|a| a.shape()[0]).sum();
@@ -580,16 +579,15 @@ impl FaceDetector {
             offset += rows;
         }
         
-        Ok(result)
+        result
     }
 
     /// Convert distance predictions to keypoints (array version)
     fn distance_to_kps_array(
-        &self,
         points: &Array2<f32>,
         distances: &[f32],
         max_shape: Option<(i32, i32)>,
-    ) -> Result<Array3<f32>> {
+    ) -> Array3<f32> {
         let n_points = points.shape()[0];
         let n_kps = NUM_FACE_KEYPOINTS;
         let mut kpss = Array3::zeros((n_points, n_kps, 2));
@@ -617,7 +615,7 @@ impl FaceDetector {
             }
         }
         
-        Ok(kpss)
+        kpss
     }
 }
 

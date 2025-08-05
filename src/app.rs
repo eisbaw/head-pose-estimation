@@ -21,6 +21,44 @@ use opencv::{
 };
 use std::time::{Duration, Instant};
 
+/// Type alias for filter collection: (name, filter, color)
+type FilterCollection = Vec<(String, Box<dyn CursorFilter>, Scalar)>;
+
+/// Type alias for cursor position collection: (name, position, color)
+type CursorPositions = Vec<(String, (f64, f64), Scalar)>;
+
+/// Cursor behavior configuration
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CursorConfig {
+    /// Movement threshold behavior
+    pub movement_threshold: bool,
+    /// Coordinate mode (absolute vs relative)
+    pub relative_mode: bool,
+}
+
+impl CursorConfig {
+    /// Create new cursor configuration
+    pub const fn new(movement_threshold: bool, relative_mode: bool) -> Self {
+        Self { movement_threshold, relative_mode }
+    }
+}
+
+/// Display options configuration
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DisplayConfig {
+    /// Show all filters for comparison
+    pub show_all_filters: bool,
+    /// Enable debug output
+    pub debug: bool,
+}
+
+impl DisplayConfig {
+    /// Create new display configuration
+    pub const fn new(show_all_filters: bool, debug: bool) -> Self {
+        Self { show_all_filters, debug }
+    }
+}
+
 /// Main application configuration
 #[derive(Debug, Clone)]
 pub struct AppConfig {
@@ -30,24 +68,20 @@ pub struct AppConfig {
     pub cursor_mode: CursorMode,
     /// Filter type for cursor smoothing
     pub filter_type: String,
-    /// Show all filters for comparison
-    pub show_all_filters: bool,
+    /// Display configuration
+    pub display: DisplayConfig,
     /// GUI display mode
     pub gui_mode: GuiMode,
     /// Image inversion mode
     pub invert_mode: InvertMode,
     /// Brightness adjustment value
     pub brightness: f32,
-    /// Enable debug output
-    pub debug: bool,
     /// Data source for cursor control
     pub data_source: DataSource,
     /// Vector interpretation mode
     pub vector_mode: VectorMode,
-    /// Only move cursor when head movement is detected
-    pub cursor_still: bool,
-    /// Use relative cursor control
-    pub cursor_relative: bool,
+    /// Cursor behavior configuration
+    pub cursor_config: CursorConfig,
 }
 
 /// Video source type
@@ -123,7 +157,7 @@ pub struct HeadPoseApp {
     video_capture: VideoCapture,
     is_moving: bool,
     cursor_controller: Option<CursorController>,
-    all_filters: Option<Vec<(String, Box<dyn CursorFilter>, Scalar)>>,
+    all_filters: Option<FilterCollection>,
 }
 
 impl HeadPoseApp {
@@ -163,7 +197,7 @@ impl HeadPoseApp {
         let pose_estimator = PoseEstimator::new("assets/model.txt", frame_width, frame_height)?;
 
         // Initialize movement detector if needed
-        let movement_detector = if config.cursor_still {
+        let movement_detector = if config.cursor_config.movement_threshold {
             info!("Movement detection enabled");
             Some(MovementDetector::new(15, 2.0))
         } else {
@@ -171,7 +205,7 @@ impl HeadPoseApp {
         };
         
         // Initialize all filters if show_all_filters is enabled
-        let all_filters = if config.show_all_filters {
+        let all_filters = if config.display.show_all_filters {
             info!("Showing all filters for comparison");
             let filter_configs = vec![
                 ("none", Scalar::new(255.0, 255.0, 255.0, 0.0)),      // White
@@ -274,7 +308,7 @@ impl HeadPoseApp {
             // Update FPS counter
             frame_count += 1;
             if last_fps_update.elapsed() >= Duration::from_secs(1) {
-                fps = frame_count as f64 / start_time.elapsed().as_secs_f64();
+                fps = f64::from(frame_count) / start_time.elapsed().as_secs_f64();
                 last_fps_update = Instant::now();
             }
 
@@ -284,7 +318,7 @@ impl HeadPoseApp {
                 
                 // Check for exit
                 let key = highgui::wait_key(1)?;
-                if key == 27 || key == b'q' as i32 {
+                if key == 27 || key == i32::from(b'q') {
                     info!("Exit requested by user");
                     break;
                 }
@@ -300,9 +334,9 @@ impl HeadPoseApp {
         // Apply brightness adjustment
         if self.config.brightness != 0.0 {
             let brightness_scalar = Scalar::new(
-                self.config.brightness as f64,
-                self.config.brightness as f64,
-                self.config.brightness as f64,
+                f64::from(self.config.brightness),
+                f64::from(self.config.brightness),
+                f64::from(self.config.brightness),
                 0.0,
             );
             let temp = frame.clone();
@@ -400,7 +434,7 @@ impl HeadPoseApp {
 
         // Calculate all filter positions if enabled
         let all_cursor_positions = if self.all_filters.is_some() && !poses.is_empty() {
-            self.calculate_all_cursor_positions(&poses[0])?
+            self.calculate_all_cursor_positions(&poses[0])
         } else {
             None
         };
@@ -434,28 +468,24 @@ impl HeadPoseApp {
         };
 
         // Apply filter if available
-        let (cursor_x, cursor_y) = if let Some(filter) = &mut self.cursor_filter {
-            filter.apply(raw_x, raw_y)
-        } else {
-            (raw_x, raw_y)
-        };
+        let (cursor_x, cursor_y) = self.cursor_filter.as_mut().map_or((raw_x, raw_y), |filter| filter.apply(raw_x, raw_y));
         
         // Move cursor if controller is available and conditions are met
         if let Some(controller) = &self.cursor_controller {
-            // Check movement condition if cursor_still is enabled
-            if !self.config.cursor_still || self.is_moving {
+            // Check movement condition if movement threshold is enabled
+            if !self.config.cursor_config.movement_threshold || self.is_moving {
                 // Map normalized coordinates to screen coordinates
                 let (screen_width, screen_height) = controller.get_screen_size();
                 
-                if self.config.cursor_relative {
+                if self.config.cursor_config.relative_mode {
                     // Relative mode - use cursor values as velocity
                     let scale = 5.0; // Sensitivity factor
                     let dx = f64_to_i32(cursor_x * scale)
                         .unwrap_or(0)
-                        .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+                        .clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
                     let dy = f64_to_i32(cursor_y * scale)
                         .unwrap_or(0)
-                        .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+                        .clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
                     
                     if dx != 0 || dy != 0 {
                         controller.move_relative(dx, dy)?;
@@ -466,12 +496,12 @@ impl HeadPoseApp {
                     let norm_x = (cursor_x + 0.5).clamp(0.0, 1.0);
                     let norm_y = (cursor_y + 0.5).clamp(0.0, 1.0);
                     
-                    let screen_x = f64_to_i32(norm_x * screen_width as f64)
+                    let screen_x = f64_to_i32(norm_x * f64::from(screen_width))
                         .unwrap_or(0)
-                        .clamp(0, i16::MAX as i32) as i16;
-                    let screen_y = f64_to_i32(norm_y * screen_height as f64)
+                        .clamp(0, i32::from(i16::MAX)) as i16;
+                    let screen_y = f64_to_i32(norm_y * f64::from(screen_height))
                         .unwrap_or(0)
-                        .clamp(0, i16::MAX as i32) as i16;
+                        .clamp(0, i32::from(i16::MAX)) as i16;
                     
                     controller.set_position(screen_x, screen_y)?;
                 }
@@ -482,7 +512,7 @@ impl HeadPoseApp {
     }
 
     /// Calculate cursor positions for all filters
-    fn calculate_all_cursor_positions(&mut self, pose: &PoseData) -> Result<Option<Vec<(String, (f64, f64), Scalar)>>> {
+    fn calculate_all_cursor_positions(&mut self, pose: &PoseData) -> Option<CursorPositions> {
         if let Some(filters) = &mut self.all_filters {
             let (raw_x, raw_y) = match self.config.data_source {
                 DataSource::PitchYaw => {
@@ -502,9 +532,9 @@ impl HeadPoseApp {
                 positions.push((name.clone(), (x, y), *color));
             }
             
-            Ok(Some(positions))
+            Some(positions)
         } else {
-            Ok(None)
+            None
         }
     }
 
@@ -594,12 +624,12 @@ impl HeadPoseApp {
                         .collect();
                     
                     // Draw pose axes (simplified visualization using rotation matrix)
-                    self.draw_pose_axes(&mut display_frame, &transformed_landmarks, &pose.rotation_matrix, &pose.translation_vec)?;
+                    Self::draw_pose_axes(&mut display_frame, &transformed_landmarks, &pose.rotation_matrix, &pose.translation_vec)?;
                 }
             }
 
             // Draw FPS
-            let fps_text = format!("FPS: {:.1}", fps);
+            let fps_text = format!("FPS: {fps:.1}");
             imgproc::put_text(
                 &mut display_frame,
                 &fps_text,
@@ -697,7 +727,7 @@ impl HeadPoseApp {
             }
             
             // Draw debug overlay if enabled
-            if self.config.debug && !result.poses.is_empty() {
+            if self.config.display.debug && !result.poses.is_empty() {
                 let pose = &result.poses[0];
                 let text_color = Scalar::new(200.0, 200.0, 200.0, 0.0);
                 
@@ -789,7 +819,7 @@ impl HeadPoseApp {
                     // Draw movement statistics if available
                     if let Some(detector) = &self.movement_detector {
                         if let Some((pitch_stats, yaw_stats)) = detector.get_stats() {
-                            let stats_text = format!(
+                            let movement_text = format!(
                                 "Movement: P_std={:.2} Y_std={:.2}", 
                                 pitch_stats.std_dev, 
                                 yaw_stats.std_dev
@@ -797,7 +827,7 @@ impl HeadPoseApp {
                             
                             imgproc::put_text(
                                 &mut cursor_frame,
-                                &stats_text,
+                                &movement_text,
                                 Point::new(10, status_y + 30),
                                 FONT_HERSHEY_SIMPLEX,
                                 0.5,
@@ -819,7 +849,6 @@ impl HeadPoseApp {
     
     /// Draw pose axes on the frame
     fn draw_pose_axes(
-        &self,
         frame: &mut Mat,
         landmarks: &[opencv::core::Point2f],
         rotation_mat: &Mat,
@@ -901,7 +930,7 @@ struct ProcessingResult {
     landmarks: Vec<Vec<opencv::core::Point2f>>,
     poses: Vec<PoseData>,
     cursor_pos: Option<(f64, f64)>,
-    all_cursor_positions: Option<Vec<(String, (f64, f64), Scalar)>>,
+    all_cursor_positions: Option<CursorPositions>,
 }
 
 /// Pose estimation data

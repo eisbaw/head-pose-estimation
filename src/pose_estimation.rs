@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{Error, Result, utils::safe_cast::usize_to_i32};
 use opencv::{
     calib3d,
     core::{Mat, Point2f, Point3f, Vec3d},
@@ -34,7 +34,7 @@ impl PoseEstimator {
         for (idx, &value) in camera_matrix_data.iter().enumerate() {
             let i = idx / 3;
             let j = idx % 3;
-            *camera_matrix.at_2d_mut::<f64>(i as i32, j as i32)? = value;
+            *camera_matrix.at_2d_mut::<f64>(usize_to_i32(i)?, usize_to_i32(j)?)? = value;
         }
 
         // Assume no lens distortion
@@ -183,5 +183,52 @@ mod tests {
         assert!((angles[0]).abs() < 1e-6);
         assert!((angles[1]).abs() < 1e-6);
         assert!((angles[2]).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_parse_model_points() {
+        // Valid model data - must be exactly 204 values (68 points × 3)
+        let mut values = Vec::new();
+        for i in 0..68 {
+            values.push(format!("{}.0", i * 3));
+            values.push(format!("{}.0", i * 3 + 1));
+            values.push(format!("{}.0", i * 3 + 2));
+        }
+        let valid_data = values.join("\n");
+        let points = PoseEstimator::parse_model_points(&valid_data).unwrap();
+        assert_eq!(points.len(), 68);
+        assert_eq!(points[0].x, 0.0);
+        assert_eq!(points[0].y, 1.0);
+        assert_eq!(points[0].z, 2.0);
+        
+        // Wrong number of values
+        let invalid_data = "1.0\n2.0\n3.0";
+        assert!(PoseEstimator::parse_model_points(invalid_data).is_err());
+        
+        // Empty data
+        let empty_data = "";
+        assert!(PoseEstimator::parse_model_points(empty_data).is_err());
+    }
+
+    #[test]
+    fn test_parse_model_points_invalid() {
+        // Invalid number format - but the current implementation filters invalid lines
+        let mut values = Vec::new();
+        for i in 0..67 {
+            values.push(format!("{}.0", i));
+        }
+        values.push("abc".to_string()); // This will be filtered out
+        values.push("203.0".to_string());
+        let invalid_data = values.join("\n");
+        // This will have 203 valid values, not 204
+        assert!(PoseEstimator::parse_model_points(&invalid_data).is_err());
+        
+        // Too few values
+        let wrong_count = (0..200).map(|i| format!("{}.0", i)).collect::<Vec<_>>().join("\n");
+        assert!(PoseEstimator::parse_model_points(&wrong_count).is_err());
+        
+        // Too many values  
+        let too_many = (0..205).map(|i| format!("{}.0", i)).collect::<Vec<_>>().join("\n");
+        assert!(PoseEstimator::parse_model_points(&too_many).is_err());
     }
 }

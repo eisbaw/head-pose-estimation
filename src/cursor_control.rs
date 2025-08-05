@@ -29,7 +29,7 @@ impl CursorController {
         
         // Connect to X11 server
         let (connection, screen_num) = RustConnection::connect(None)
-            .map_err(|e| AppError::CursorControl(format!("Failed to connect to X11: {}", e)))?;
+            .map_err(|e| AppError::CursorControl(format!("Failed to connect to X11: {e}")))?;
         
         // Get screen information
         let screen = connection
@@ -60,18 +60,20 @@ impl CursorController {
         let reply = self
             .connection
             .query_pointer(self.screen.root)
-            .map_err(|e| AppError::CursorControl(format!("Failed to send query pointer: {}", e)))?
+            .map_err(|e| AppError::CursorControl(format!("Failed to send query pointer: {e}")))?
             .reply()
-            .map_err(|e| AppError::CursorControl(format!("Failed to query pointer: {}", e)))?;
+            .map_err(|e| AppError::CursorControl(format!("Failed to query pointer: {e}")))?;
         
         Ok((reply.root_x, reply.root_y))
     }
     
     /// Set cursor position (absolute)
     pub fn set_position(&self, x: i16, y: i16) -> Result<()> {
-        // Clamp to screen bounds
-        let x = x.clamp(0, (self.screen_width.saturating_sub(1)) as i16);
-        let y = y.clamp(0, (self.screen_height.saturating_sub(1)) as i16);
+        // Clamp to screen bounds safely
+        let max_x = i16::try_from(self.screen_width.saturating_sub(1)).unwrap_or(i16::MAX);
+        let max_y = i16::try_from(self.screen_height.saturating_sub(1)).unwrap_or(i16::MAX);
+        let x = x.clamp(0, max_x);
+        let y = y.clamp(0, max_y);
         
         debug!("Setting cursor position to ({}, {})", x, y);
         
@@ -86,10 +88,10 @@ impl CursorController {
                 x,
                 y,
             )
-            .map_err(|e| AppError::CursorControl(format!("Failed to warp pointer: {}", e)))?;
+            .map_err(|e| AppError::CursorControl(format!("Failed to warp pointer: {e}")))?;
         
         self.connection.flush()
-            .map_err(|e| AppError::CursorControl(format!("Failed to flush connection: {}", e)))?;
+            .map_err(|e| AppError::CursorControl(format!("Failed to flush connection: {e}")))?;
         
         Ok(())
     }
@@ -104,18 +106,18 @@ impl CursorController {
     }
     
     /// Get screen dimensions
-    pub fn get_screen_size(&self) -> (u16, u16) {
+    pub const fn get_screen_size(&self) -> (u16, u16) {
         (self.screen_width, self.screen_height)
     }
     
     /// Map normalized coordinates to screen coordinates
     pub fn map_to_screen(&self, normalized_x: f64, normalized_y: f64) -> (i16, i16) {
-        let x = f64_to_i32(normalized_x * self.screen_width as f64)
+        let x = f64_to_i32(normalized_x * f64::from(self.screen_width))
             .unwrap_or(0)
-            .clamp(0, i16::MAX as i32) as i16;
-        let y = f64_to_i32(normalized_y * self.screen_height as f64)
+            .clamp(0, i32::from(i16::MAX)) as i16;
+        let y = f64_to_i32(normalized_y * f64::from(self.screen_height))
             .unwrap_or(0)
-            .clamp(0, i16::MAX as i32) as i16;
+            .clamp(0, i32::from(i16::MAX)) as i16;
         (x, y)
     }
 }
