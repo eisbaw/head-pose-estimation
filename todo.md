@@ -266,7 +266,7 @@ approx = "0.5"
 - [x] DONE: Implement cursor control (X11)
 - [x] DONE: Implement GUI visualization
 - [x] DONE: Implement filter mode switching (show all filters for comparison)
-- [ ] Implement debug overlay
+- [x] DONE: Implement debug overlay (angles, movement status, statistics)
 
 ### Testing
 - [ ] Add integration tests for full pipeline
