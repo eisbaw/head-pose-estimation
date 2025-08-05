@@ -11,6 +11,8 @@ use std::sync::Arc;
 const DEFAULT_LANDMARK_INPUT_SIZE: i32 = 128;
 
 /// Facial landmark detector using `ONNX` Runtime
+/// 
+/// Thread-safe: The detector can be shared between threads as it contains no mutable state.
 pub struct MarkDetector {
     session: Session,
     #[allow(dead_code)] // Reserved for future named tensor support

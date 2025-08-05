@@ -1,6 +1,6 @@
 use crate::{
     constants::{IMAGE_NORMALIZATION_OFFSET, IMAGE_NORMALIZATION_SCALE},
-    utils::safe_cast::{f32_to_i32_clamp, usize_to_i32},
+    utils::safe_cast::{f32_to_i32_clamp, u32_to_i32, usize_to_i32},
     Result,
 };
 use ndarray::{s, Array1, Array2, Array3, Array4, CowArray};
@@ -10,7 +10,7 @@ use opencv::prelude::*;
 use ort::{Environment, Session, Value};
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// Type alias for face detection forward pass outputs
 type FaceDetectionOutputs = (Vec<Array1<f32>>, Vec<Array2<f32>>, Vec<Array3<f32>>);
@@ -36,6 +36,9 @@ pub struct FaceDetection {
 }
 
 /// SCRFD Face Detector using `ONNX` Runtime
+/// 
+/// Thread-safe: The detector can be shared between threads.
+/// The internal center_cache is protected by a Mutex.
 pub struct FaceDetector {
     session: Session,
     #[allow(dead_code)] // Reserved for future named tensor support
@@ -49,7 +52,7 @@ pub struct FaceDetector {
     num_anchors: usize,
     strides: Vec<i32>,
     offset: usize,
-    center_cache: HashMap<(i32, i32, i32), Array2<f32>>,
+    center_cache: Arc<Mutex<HashMap<(i32, i32, i32), Array2<f32>>>>,
 }
 
 impl FaceDetector {
@@ -90,8 +93,8 @@ impl FaceDetector {
         // Extract input size from shape [batch, channels, height, width]
         let input_size = if input_shape.len() >= 4 {
             // Note: dimensions are Option<u32>, we need to handle this properly
-            let height = usize_to_i32(input_shape[2].unwrap_or(DEFAULT_INPUT_SIZE as u32) as usize)?;
-            let width = usize_to_i32(input_shape[3].unwrap_or(DEFAULT_INPUT_SIZE as u32) as usize)?;
+            let height = u32_to_i32(input_shape[2].unwrap_or(DEFAULT_INPUT_SIZE as u32))?;
+            let width = u32_to_i32(input_shape[3].unwrap_or(DEFAULT_INPUT_SIZE as u32))?;
             (width, height)
         } else {
             (DEFAULT_INPUT_SIZE, DEFAULT_INPUT_SIZE)
@@ -128,7 +131,7 @@ impl FaceDetector {
             num_anchors,
             strides,
             offset,
-            center_cache: HashMap::new(),
+            center_cache: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 
@@ -304,14 +307,19 @@ impl FaceDetector {
             let width = input_width / stride;
             let key = (height, width, stride);
 
-            let anchor_centers = if let Some(centers) = self.center_cache.get(&key) {
-                centers.clone()
-            } else {
-                let centers = self.generate_anchor_centers(height, width, stride)?;
-                if self.center_cache.len() < MAX_ANCHOR_CACHE_SIZE {
-                    self.center_cache.insert(key, centers.clone());
+            let anchor_centers = {
+                let cache = self.center_cache.lock().unwrap();
+                if let Some(centers) = cache.get(&key) {
+                    centers.clone()
+                } else {
+                    drop(cache); // Release lock before generating
+                    let centers = self.generate_anchor_centers(height, width, stride)?;
+                    let mut cache = self.center_cache.lock().unwrap();
+                    if cache.len() < MAX_ANCHOR_CACHE_SIZE {
+                        cache.insert(key, centers.clone());
+                    }
+                    centers
                 }
-                centers
             };
 
             // Filter by threshold
@@ -608,7 +616,13 @@ impl FaceDetector {
 
             for j in 0..n_kps {
                 let idx = i * (n_kps * 2) + j * 2;
-                if idx + 1 >= distances.len() {
+                // Check bounds for both idx and idx + 1
+                if idx >= distances.len() || idx + 1 >= distances.len() {
+                    log::warn!(
+                        "Insufficient distance data: expected at least {} elements, got {}",
+                        idx + 2,
+                        distances.len()
+                    );
                     break;
                 }
 
