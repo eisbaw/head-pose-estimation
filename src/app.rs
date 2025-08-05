@@ -301,13 +301,14 @@ impl HeadPoseApp {
         
         for face in &faces {
             // Refine face box
-            let mut refined_box = face.bbox;
+            let mut refined_boxes = vec![face.bbox];
             refine_boxes(
-                &mut [refined_box],
+                &mut refined_boxes,
                 frame.cols(),
                 frame.rows(),
                 0.2,
             )?;
+            let refined_box = refined_boxes[0];
 
             // Detect landmarks
             let face_roi = Mat::roi(frame, refined_box)?;

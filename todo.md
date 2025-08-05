@@ -260,18 +260,18 @@ approx = "0.5"
 - [x] DONE: Port distance2kps function for face detection
 
 ### Missing Core Functionality
-- [ ] Implement main application loop
-- [ ] Implement video capture from webcam
-- [ ] Implement video capture from file
+- [x] DONE: Implement main application loop
+- [x] DONE: Implement video capture from webcam
+- [x] DONE: Implement video capture from file
 - [ ] Implement cursor control (X11)
-- [ ] Implement GUI visualization
+- [x] DONE: Implement GUI visualization
 - [ ] Implement filter mode switching
 - [ ] Implement debug overlay
 
 ### Testing
 - [ ] Add integration tests for full pipeline
 - [ ] Add performance benchmarks
-- [ ] Test with actual ONNX models
+- [x] DONE: Test with actual ONNX models
 - [ ] Test cursor control functionality
 
 ## Code Quality Issues (Found by Clippy)
