@@ -3,13 +3,13 @@
 use crate::{
     cursor_control::CursorController,
     error::Result,
-    face_detection::{FaceDetector, FaceDetection},
+    face_detection::{FaceDetection, FaceDetector},
     filters::{create_filter, CursorFilter},
     mark_detection::MarkDetector,
     movement_detector::MovementDetector,
     pose_estimation::PoseEstimator,
-    utils::safe_cast::{f32_to_i32_clamp, f64_to_i32},
     utils::refine_boxes,
+    utils::safe_cast::{f32_to_i32_clamp, f64_to_i32},
 };
 use log::{info, warn};
 use opencv::{
@@ -40,7 +40,10 @@ impl CursorConfig {
     /// Create new cursor configuration
     #[must_use]
     pub const fn new(movement_threshold: bool, relative_mode: bool) -> Self {
-        Self { movement_threshold, relative_mode }
+        Self {
+            movement_threshold,
+            relative_mode,
+        }
     }
 }
 
@@ -57,7 +60,10 @@ impl DisplayConfig {
     /// Create new display configuration
     #[must_use]
     pub const fn new(show_all_filters: bool, debug: bool) -> Self {
-        Self { show_all_filters, debug }
+        Self {
+            show_all_filters,
+            debug,
+        }
     }
 }
 
@@ -180,30 +186,40 @@ impl HeadPoseApp {
             VideoSource::Camera(index) => {
                 info!("Opening camera {}", index);
                 let mut cap = VideoCapture::new(*index, videoio::CAP_ANY)?;
-                
+
                 // Reduce buffer size for lower latency (webcam only)
                 cap.set(CAP_PROP_BUFFERSIZE, 1.0)?;
                 info!("Camera buffer size set to 1 for low latency");
-                
+
                 cap
             }
             VideoSource::File(path) => {
                 info!("Opening video file: {}", path);
-                VideoCapture::from_file(path, videoio::CAP_ANY)?
+                let cap = VideoCapture::from_file(path, videoio::CAP_ANY)?;
+
+                // Check if the video file was opened successfully
+                if !cap.is_opened()? {
+                    return Err(crate::error::Error::ModelError(format!(
+                        "Failed to open video file: {}",
+                        path
+                    )));
+                }
+
+                cap
             }
         };
 
         // Initialize components
         let face_detector = FaceDetector::new("assets/face_detector.onnx", 0.5, 0.4)?;
-        
+
         let mark_detector = MarkDetector::new("assets/face_landmarks.onnx")?;
-        
+
         // Get initial frame size for camera matrix initialization
         let mut temp_frame = Mat::default();
         video_capture.read(&mut temp_frame)?;
         let frame_width = temp_frame.cols();
         let frame_height = temp_frame.rows();
-        
+
         let pose_estimator = PoseEstimator::new("assets/model.txt", frame_width, frame_height)?;
 
         // Initialize movement detector if needed
@@ -213,21 +229,21 @@ impl HeadPoseApp {
         } else {
             None
         };
-        
+
         // Initialize all filters if show_all_filters is enabled
         let all_filters = if config.display.show_all_filters {
             info!("Showing all filters for comparison");
             let filter_configs = vec![
-                ("none", Scalar::new(255.0, 255.0, 255.0, 0.0)),      // White
-                ("kalman", Scalar::new(0.0, 255.0, 0.0, 0.0)),        // Green
-                ("median", Scalar::new(255.0, 0.0, 0.0, 0.0)),        // Blue
+                ("none", Scalar::new(255.0, 255.0, 255.0, 0.0)),         // White
+                ("kalman", Scalar::new(0.0, 255.0, 0.0, 0.0)),           // Green
+                ("median", Scalar::new(255.0, 0.0, 0.0, 0.0)),           // Blue
                 ("moving_average", Scalar::new(0.0, 255.0, 255.0, 0.0)), // Yellow
-                ("exponential", Scalar::new(255.0, 0.0, 255.0, 0.0)), // Magenta
-                ("lowpass", Scalar::new(0.0, 165.0, 255.0, 0.0)),     // Orange
-                ("lowpass2", Scalar::new(255.0, 100.0, 100.0, 0.0)),  // Light Blue
-                ("hampel", Scalar::new(100.0, 255.0, 100.0, 0.0)),    // Light Green
+                ("exponential", Scalar::new(255.0, 0.0, 255.0, 0.0)),    // Magenta
+                ("lowpass", Scalar::new(0.0, 165.0, 255.0, 0.0)),        // Orange
+                ("lowpass2", Scalar::new(255.0, 100.0, 100.0, 0.0)),     // Light Blue
+                ("hampel", Scalar::new(100.0, 255.0, 100.0, 0.0)),       // Light Green
             ];
-            
+
             let mut filters = Vec::new();
             for (name, color) in filter_configs {
                 match create_filter(name) {
@@ -235,7 +251,7 @@ impl HeadPoseApp {
                     Err(e) => warn!("Failed to create {} filter: {}", name, e),
                 }
             }
-            
+
             Some(filters)
         } else {
             None
@@ -297,7 +313,7 @@ impl HeadPoseApp {
     /// - OpenCV operations fail
     pub fn run(&mut self) -> Result<()> {
         info!("Starting main application loop");
-        
+
         let mut frame_count = 0;
         let start_time = Instant::now();
         let mut last_fps_update = Instant::now();
@@ -333,7 +349,7 @@ impl HeadPoseApp {
             // Display results
             if self.config.gui_mode != GuiMode::None {
                 self.display_results(&frame, &result, fps)?;
-                
+
                 // Check for exit
                 let key = highgui::wait_key(1)?;
                 if key == 27 || key == i32::from(b'q') {
@@ -385,7 +401,7 @@ impl HeadPoseApp {
     fn process_frame(&mut self, frame: &Mat) -> Result<ProcessingResult> {
         // Detect faces
         let faces = self.face_detector.detect(frame)?;
-        
+
         if faces.is_empty() {
             return Ok(ProcessingResult {
                 faces: Vec::new(),
@@ -399,38 +415,32 @@ impl HeadPoseApp {
         // Process each face
         let mut landmarks = Vec::new();
         let mut poses = Vec::new();
-        
+
         for face in &faces {
             // Refine face box
             let mut refined_boxes = vec![face.bbox];
-            refine_boxes(
-                &mut refined_boxes,
-                frame.cols(),
-                frame.rows(),
-                0.2,
-            )?;
+            refine_boxes(&mut refined_boxes, frame.cols(), frame.rows(), 0.2)?;
             let refined_box = refined_boxes[0];
 
             // Detect landmarks
             let face_roi = Mat::roi(frame, refined_box)?;
             let face_roi_mat = face_roi.try_clone()?;
             let marks = self.mark_detector.detect(&face_roi_mat)?;
-            
+
             if marks.len() == 68 {
                 // Convert Point2f to tuples
-                let marks_tuples: Vec<(f32, f32)> = marks.iter()
-                    .map(|p| (p.x, p.y))
-                    .collect();
-                    
+                let marks_tuples: Vec<(f32, f32)> = marks.iter().map(|p| (p.x, p.y)).collect();
+
                 // Estimate pose
-                let (rotation_vec, translation_vec, rotation_matrix) = self.pose_estimator.estimate_pose(&marks_tuples)?;
-                
+                let (rotation_vec, translation_vec, rotation_matrix) =
+                    self.pose_estimator.estimate_pose(&marks_tuples)?;
+
                 // Extract Euler angles from rotation matrix
                 let euler_angles = PoseEstimator::rotation_matrix_to_euler(&rotation_matrix)?;
                 let pitch = euler_angles[0];
                 let yaw = euler_angles[1];
                 let roll = euler_angles[2];
-                
+
                 landmarks.push(marks);
                 poses.push(PoseData {
                     rotation_vec,
@@ -456,7 +466,7 @@ impl HeadPoseApp {
         } else {
             None
         };
-        
+
         Ok(ProcessingResult {
             faces,
             landmarks,
@@ -475,7 +485,7 @@ impl HeadPoseApp {
         let (raw_x, raw_y) = match self.config.data_source {
             DataSource::PitchYaw => {
                 // Map angles to normalized coordinates
-                let x = pose.yaw / 20.0;  // -10 to 10 degrees -> -0.5 to 0.5
+                let x = pose.yaw / 20.0; // -10 to 10 degrees -> -0.5 to 0.5
                 let y = -pose.pitch / 20.0; // Inverted
                 (x, y)
             }
@@ -484,7 +494,7 @@ impl HeadPoseApp {
                 // The normal vector is the third column of the rotation matrix
                 let r13 = *pose.rotation_matrix.at_2d::<f64>(0, 2).unwrap_or(&0.0);
                 let r23 = *pose.rotation_matrix.at_2d::<f64>(1, 2).unwrap_or(&0.0);
-                
+
                 // Scale the projection for cursor movement
                 // Invert Y to match screen coordinates
                 let scale = 100.0;
@@ -493,15 +503,18 @@ impl HeadPoseApp {
         };
 
         // Apply filter if available
-        let (cursor_x, cursor_y) = self.cursor_filter.as_mut().map_or((raw_x, raw_y), |filter| filter.apply(raw_x, raw_y));
-        
+        let (cursor_x, cursor_y) = self
+            .cursor_filter
+            .as_mut()
+            .map_or((raw_x, raw_y), |filter| filter.apply(raw_x, raw_y));
+
         // Move cursor if controller is available and conditions are met
         if let Some(controller) = &self.cursor_controller {
             // Check movement condition if movement threshold is enabled
             if !self.config.cursor_config.movement_threshold || self.is_moving {
                 // Map normalized coordinates to screen coordinates
                 let (screen_width, screen_height) = controller.get_screen_size();
-                
+
                 if self.config.cursor_config.relative_mode {
                     // Relative mode - use cursor values as velocity
                     let scale = 5.0; // Sensitivity factor
@@ -511,7 +524,7 @@ impl HeadPoseApp {
                     let dy = f64_to_i32(cursor_y * scale)
                         .unwrap_or(0)
                         .clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
-                    
+
                     if dx != 0 || dy != 0 {
                         controller.move_relative(dx, dy)?;
                     }
@@ -520,19 +533,19 @@ impl HeadPoseApp {
                     // Transform from [-0.5, 0.5] to [0, 1]
                     let norm_x = (cursor_x + 0.5).clamp(0.0, 1.0);
                     let norm_y = (cursor_y + 0.5).clamp(0.0, 1.0);
-                    
+
                     let screen_x = f64_to_i32(norm_x * f64::from(screen_width))
                         .unwrap_or(0)
                         .clamp(0, i32::from(i16::MAX)) as i16;
                     let screen_y = f64_to_i32(norm_y * f64::from(screen_height))
                         .unwrap_or(0)
                         .clamp(0, i32::from(i16::MAX)) as i16;
-                    
+
                     controller.set_position(screen_x, screen_y)?;
                 }
             }
         }
-        
+
         Ok(Some((cursor_x, cursor_y)))
     }
 
@@ -549,19 +562,19 @@ impl HeadPoseApp {
                     // Calculate normal projection from rotation matrix
                     let r13 = *pose.rotation_matrix.at_2d::<f64>(0, 2).unwrap_or(&0.0);
                     let r23 = *pose.rotation_matrix.at_2d::<f64>(1, 2).unwrap_or(&0.0);
-                    
+
                     // Scale the projection for cursor movement
                     let scale = 100.0;
                     (r13 * scale, -r23 * scale)
                 }
             };
-            
+
             let mut positions = Vec::new();
             for (name, filter, color) in filters.iter_mut() {
                 let (x, y) = filter.apply(raw_x, raw_y);
                 positions.push((name.clone(), (x, y), *color));
             }
-            
+
             Some(positions)
         } else {
             None
@@ -569,16 +582,11 @@ impl HeadPoseApp {
     }
 
     /// Display results in GUI windows
-    fn display_results(
-        &self,
-        frame: &Mat,
-        result: &ProcessingResult,
-        fps: f64,
-    ) -> Result<()> {
+    fn display_results(&self, frame: &Mat, result: &ProcessingResult, fps: f64) -> Result<()> {
         // Camera window
         if self.config.gui_mode == GuiMode::All || self.config.gui_mode == GuiMode::Camera {
             let mut display_frame = frame.clone();
-            
+
             // Draw face boxes and landmarks
             for (i, face) in result.faces.iter().enumerate() {
                 imgproc::rectangle(
@@ -589,24 +597,21 @@ impl HeadPoseApp {
                     LINE_8,
                     0,
                 )?;
-                
+
                 // Draw landmarks if available
                 if i < result.landmarks.len() {
                     // Get the refined box used for landmark detection
                     let mut refined_boxes = vec![face.bbox];
-                    refine_boxes(
-                        &mut refined_boxes,
-                        display_frame.cols(),
-                        display_frame.rows(),
-                        0.2,
-                    )?;
+                    refine_boxes(&mut refined_boxes, display_frame.cols(), display_frame.rows(), 0.2)?;
                     let refined_box = refined_boxes[0];
-                    
+
                     for landmark in &result.landmarks[i] {
                         // Transform landmark from face ROI coordinates to frame coordinates
-                        let x = refined_box.x + f32_to_i32_clamp(landmark.x * refined_box.width as f32 / 256.0, 0, i32::MAX);
-                        let y = refined_box.y + f32_to_i32_clamp(landmark.y * refined_box.height as f32 / 256.0, 0, i32::MAX);
-                        
+                        let x = refined_box.x
+                            + f32_to_i32_clamp(landmark.x * refined_box.width as f32 / 256.0, 0, i32::MAX);
+                        let y = refined_box.y
+                            + f32_to_i32_clamp(landmark.y * refined_box.height as f32 / 256.0, 0, i32::MAX);
+
                         imgproc::circle(
                             &mut display_frame,
                             Point::new(x, y),
@@ -618,12 +623,11 @@ impl HeadPoseApp {
                         )?;
                     }
                 }
-                
+
                 // Draw pose information if available
                 if i < result.poses.len() {
                     let pose = &result.poses[i];
-                    let pose_text = format!("Pitch: {:.1} Yaw: {:.1} Roll: {:.1}", 
-                        pose.pitch, pose.yaw, pose.roll);
+                    let pose_text = format!("Pitch: {:.1} Yaw: {:.1} Roll: {:.1}", pose.pitch, pose.yaw, pose.roll);
                     imgproc::put_text(
                         &mut display_frame,
                         &pose_text,
@@ -635,30 +639,38 @@ impl HeadPoseApp {
                         LINE_8,
                         false,
                     )?;
-                    
+
                     // Transform landmarks to frame coordinates for pose axes
                     let mut refined_boxes = vec![face.bbox];
-                    refine_boxes(
-                        &mut refined_boxes,
-                        display_frame.cols(),
-                        display_frame.rows(),
-                        0.2,
-                    )?;
+                    refine_boxes(&mut refined_boxes, display_frame.cols(), display_frame.rows(), 0.2)?;
                     let refined_box = refined_boxes[0];
-                    
-                    let transformed_landmarks: Vec<opencv::core::Point2f> = result.landmarks[i].iter()
-                        .map(|lm| opencv::core::Point2f::new(
-                            refined_box.x as f32 + (lm.x * refined_box.width as f32 / 256.0),
-                            refined_box.y as f32 + (lm.y * refined_box.height as f32 / 256.0),
-                        ))
+
+                    let transformed_landmarks: Vec<opencv::core::Point2f> = result.landmarks[i]
+                        .iter()
+                        .map(|lm| {
+                            opencv::core::Point2f::new(
+                                refined_box.x as f32 + (lm.x * refined_box.width as f32 / 256.0),
+                                refined_box.y as f32 + (lm.y * refined_box.height as f32 / 256.0),
+                            )
+                        })
                         .collect();
-                    
+
                     // Draw pose axes (simplified visualization using rotation matrix)
-                    Self::draw_pose_axes(&mut display_frame, &transformed_landmarks, &pose.rotation_matrix, &pose.translation_vec)?;
-                    
+                    Self::draw_pose_axes(
+                        &mut display_frame,
+                        &transformed_landmarks,
+                        &pose.rotation_matrix,
+                        &pose.translation_vec,
+                    )?;
+
                     // Draw normal vector when using normal projection
                     if matches!(self.config.data_source, DataSource::NormalProjection) {
-                        Self::draw_normal_vector(&mut display_frame, &transformed_landmarks, &pose.rotation_matrix, &pose.translation_vec)?;
+                        Self::draw_normal_vector(
+                            &mut display_frame,
+                            &transformed_landmarks,
+                            &pose.rotation_matrix,
+                            &pose.translation_vec,
+                        )?;
                     }
                 }
             }
@@ -680,25 +692,25 @@ impl HeadPoseApp {
             // Draw movement detection status if available
             if self.movement_detector.is_some() && self.is_moving {
                 imgproc::put_text(
-                        &mut display_frame,
-                        "MOVING",
-                        Point::new(10, 60),
-                        FONT_HERSHEY_SIMPLEX,
-                        1.0,
-                        Scalar::new(0.0, 0.0, 255.0, 0.0),
-                        2,
-                        LINE_8,
-                        false,
-                    )?;
+                    &mut display_frame,
+                    "MOVING",
+                    Point::new(10, 60),
+                    FONT_HERSHEY_SIMPLEX,
+                    1.0,
+                    Scalar::new(0.0, 0.0, 255.0, 0.0),
+                    2,
+                    LINE_8,
+                    false,
+                )?;
             }
-            
+
             highgui::imshow("Head Pose Estimation", &display_frame)?;
         }
 
         // Cursor window
         if self.config.gui_mode == GuiMode::All || self.config.gui_mode == GuiMode::Pointers {
             let mut cursor_frame = Mat::zeros(600, 800, CV_8UC3)?.to_mat()?;
-            
+
             // Draw all filter positions if available
             if let Some(all_positions) = &result.all_cursor_positions {
                 // Draw legend
@@ -717,12 +729,12 @@ impl HeadPoseApp {
                     )?;
                     legend_y += 20;
                 }
-                
+
                 // Draw cursor positions
                 for (_name, (x, y), color) in all_positions {
                     let cursor_x = f64_to_i32((x + 0.5) * 800.0).unwrap_or(0);
                     let cursor_y = f64_to_i32((y + 0.5) * 600.0).unwrap_or(0);
-                    
+
                     // Draw circle with alpha blending for overlapping cursors
                     imgproc::circle(
                         &mut cursor_frame,
@@ -733,7 +745,7 @@ impl HeadPoseApp {
                         LINE_8,
                         0,
                     )?;
-                    
+
                     // Draw filled circle with transparency effect
                     imgproc::circle(
                         &mut cursor_frame,
@@ -749,7 +761,7 @@ impl HeadPoseApp {
                 // Single cursor mode
                 let cursor_x = f64_to_i32((x + 0.5) * 800.0).unwrap_or(0);
                 let cursor_y = f64_to_i32((y + 0.5) * 600.0).unwrap_or(0);
-                
+
                 imgproc::circle(
                     &mut cursor_frame,
                     Point::new(cursor_x, cursor_y),
@@ -760,19 +772,19 @@ impl HeadPoseApp {
                     0,
                 )?;
             }
-            
+
             // Draw debug overlay if enabled
             if self.config.display.debug && !result.poses.is_empty() {
                 let pose = &result.poses[0];
                 let text_color = Scalar::new(200.0, 200.0, 200.0, 0.0);
-                
+
                 // Draw angle values or normal projection values
                 match self.config.data_source {
                     DataSource::PitchYaw => {
                         let pitch_text = format!("Pitch: {:.1}", pose.pitch);
                         let yaw_text = format!("Yaw: {:.1}", pose.yaw);
                         let roll_text = format!("Roll: {:.1}", pose.roll);
-                        
+
                         imgproc::put_text(
                             &mut cursor_frame,
                             &pitch_text,
@@ -784,7 +796,7 @@ impl HeadPoseApp {
                             LINE_8,
                             false,
                         )?;
-                        
+
                         imgproc::put_text(
                             &mut cursor_frame,
                             &yaw_text,
@@ -796,7 +808,7 @@ impl HeadPoseApp {
                             LINE_8,
                             false,
                         )?;
-                        
+
                         imgproc::put_text(
                             &mut cursor_frame,
                             &roll_text,
@@ -842,20 +854,20 @@ impl HeadPoseApp {
                         }
                     }
                 }
-                
+
                 // Draw movement status if detector is active
                 if self.movement_detector.is_some() {
                     let status_y = match self.config.data_source {
                         DataSource::PitchYaw => 540,
                         DataSource::NormalProjection => 480,
                     };
-                    
+
                     let (status_text, status_color) = if self.is_moving {
                         ("Status: MOVING", Scalar::new(0.0, 255.0, 0.0, 0.0))
                     } else {
                         ("Status: STILL", Scalar::new(0.0, 100.0, 255.0, 0.0))
                     };
-                    
+
                     imgproc::put_text(
                         &mut cursor_frame,
                         status_text,
@@ -867,16 +879,15 @@ impl HeadPoseApp {
                         LINE_8,
                         false,
                     )?;
-                    
+
                     // Draw movement statistics if available
                     if let Some(detector) = &self.movement_detector {
                         if let Some((pitch_stats, yaw_stats)) = detector.get_stats() {
                             let movement_text = format!(
-                                "Movement: P_std={:.2} Y_std={:.2}", 
-                                pitch_stats.std_dev, 
-                                yaw_stats.std_dev
+                                "Movement: P_std={:.2} Y_std={:.2}",
+                                pitch_stats.std_dev, yaw_stats.std_dev
                             );
-                            
+
                             imgproc::put_text(
                                 &mut cursor_frame,
                                 &movement_text,
@@ -898,7 +909,7 @@ impl HeadPoseApp {
 
         Ok(())
     }
-    
+
     /// Draw pose axes on the frame
     fn draw_pose_axes(
         frame: &mut Mat,
@@ -909,11 +920,14 @@ impl HeadPoseApp {
         // Use nose tip as origin (landmark 30)
         if landmarks.len() > 30 {
             let nose_tip = &landmarks[30];
-            let origin = Point::new(f32_to_i32_clamp(nose_tip.x, i32::MIN, i32::MAX), f32_to_i32_clamp(nose_tip.y, i32::MIN, i32::MAX));
-            
+            let origin = Point::new(
+                f32_to_i32_clamp(nose_tip.x, i32::MIN, i32::MAX),
+                f32_to_i32_clamp(nose_tip.y, i32::MIN, i32::MAX),
+            );
+
             // Define axis lengths
             let axis_length = 50.0;
-            
+
             // Get rotation matrix values
             let r11 = *rotation_mat.at_2d::<f64>(0, 0)?;
             let r12 = *rotation_mat.at_2d::<f64>(0, 1)?;
@@ -921,7 +935,7 @@ impl HeadPoseApp {
             let r22 = *rotation_mat.at_2d::<f64>(1, 1)?;
             let r31 = *rotation_mat.at_2d::<f64>(2, 0)?;
             let r32 = *rotation_mat.at_2d::<f64>(2, 1)?;
-            
+
             // Project 3D axes to 2D
             // X-axis (red)
             let x_end = Point::new(
@@ -938,7 +952,7 @@ impl HeadPoseApp {
                 0,
                 0.2,
             )?;
-            
+
             // Y-axis (green)
             let y_end = Point::new(
                 origin.x + f64_to_i32(r12 * axis_length).unwrap_or(0),
@@ -954,7 +968,7 @@ impl HeadPoseApp {
                 0,
                 0.2,
             )?;
-            
+
             // Z-axis (blue) - pointing out of the face
             let z_end = Point::new(
                 origin.x + f64_to_i32(r31 * axis_length).unwrap_or(0),
@@ -971,7 +985,7 @@ impl HeadPoseApp {
                 0.2,
             )?;
         }
-        
+
         Ok(())
     }
 
@@ -989,21 +1003,21 @@ impl HeadPoseApp {
                 f32_to_i32_clamp(nose_tip.x, i32::MIN, i32::MAX),
                 f32_to_i32_clamp(nose_tip.y, i32::MIN, i32::MAX),
             );
-            
+
             // Define normal vector length (longer than axes for visibility)
             let normal_length = 100.0;
-            
+
             // Get rotation matrix values for Z-axis (normal vector)
             let r13 = *rotation_mat.at_2d::<f64>(0, 2)?;
             let r23 = *rotation_mat.at_2d::<f64>(1, 2)?;
-            
+
             // Project normal vector to 2D
             // The normal vector points out of the face (negative Z in face coordinate system)
             let normal_end = Point::new(
                 origin.x - f64_to_i32(r13 * normal_length).unwrap_or(0),
                 origin.y - f64_to_i32(r23 * normal_length).unwrap_or(0),
             );
-            
+
             // Draw normal vector in cyan color with thicker line
             imgproc::arrowed_line(
                 frame,
@@ -1015,7 +1029,7 @@ impl HeadPoseApp {
                 0,
                 0.3,
             )?;
-            
+
             // Draw a small circle at the origin for clarity
             imgproc::circle(
                 frame,
@@ -1027,7 +1041,7 @@ impl HeadPoseApp {
                 0,
             )?;
         }
-        
+
         Ok(())
     }
 }

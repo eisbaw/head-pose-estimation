@@ -9,7 +9,7 @@
 - [x] DONE: Create module structure matching Python architecture
 - [x] DONE: Set up error handling with anyhow/thiserror
 - [x] DONE: Configure logging with env_logger
-- [ ] Create build script for system dependency detection
+- [x] DONE: Create build script for system dependency detection
 - [x] DONE: Set up CI/CD pipeline (GitHub Actions)
 - [x] DONE: Add rustfmt.toml and clippy configuration (in Cargo.toml)
 
@@ -180,7 +180,7 @@
 - [ ] Test landmark detection accuracy
 - [ ] Test pose estimation accuracy
 - [ ] Test cursor control modes
-- [ ] Test video file processing
+- [x] DONE: Test video file processing
 
 ### Performance Tests
 - [ ] Benchmark vs Python implementation
@@ -360,7 +360,7 @@ approx = "0.5"
 ### Testing Improvements
 - [ ] Add property-based tests for filters
 - [ ] Test filter behavior with extreme values (infinity, NaN)
-- [ ] Add benchmarks comparing filter performance
+- [x] DONE: Add benchmarks comparing filter performance
 - [ ] Test thread safety of filters (Send + Sync traits)
 
 ## Code Smells Found by Clippy (New)

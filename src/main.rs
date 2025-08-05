@@ -3,7 +3,8 @@
 use anyhow::Result;
 use clap::Parser;
 use head_pose_estimation::app::{
-    AppConfig, CursorConfig, CursorMode, DataSource, DisplayConfig, GuiMode, HeadPoseApp, InvertMode, VectorMode, VideoSource,
+    AppConfig, CursorConfig, CursorMode, DataSource, DisplayConfig, GuiMode, HeadPoseApp, InvertMode, VectorMode,
+    VideoSource,
 };
 use log::info;
 
@@ -11,11 +12,11 @@ use log::info;
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Camera index to use
-    #[arg(long, default_value = "0")]
+    #[arg(long, default_value = "0", conflicts_with = "video")]
     cam: i32,
 
     /// Video file to process
-    #[arg(short, long)]
+    #[arg(short, long, conflicts_with = "cam")]
     video: Option<String>,
 
     /// Cursor control mode (none, or filter name for absolute control)
@@ -25,7 +26,7 @@ struct Args {
     /// Filter type for display (when cursor is not used)
     #[arg(short, long, default_value = "kalman")]
     filter: String,
-    
+
     /// Show all filters for comparison
     #[arg(long, default_value = "false")]
     cursor_filter_all: bool,

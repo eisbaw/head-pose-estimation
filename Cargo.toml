@@ -53,6 +53,10 @@ harness = false
 name = "pose_estimation_benchmarks"
 harness = false
 
+[[bench]]
+name = "filter_accuracy_benchmarks"
+harness = false
+
 [lints.rust]
 unsafe_code = "warn"
 missing_docs = "warn"
