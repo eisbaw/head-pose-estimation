@@ -27,21 +27,21 @@
 
 ### Week 3: Face Detection Module
 - [x] DONE: Create FaceDetector struct
-- [ ] Implement ONNX model loading for face_detector.onnx
-- [ ] Port image preprocessing for face detection
-- [ ] Implement forward pass inference
+- [x] DONE: Implement ONNX model loading for face_detector.onnx
+- [x] DONE: Port image preprocessing for face detection
+- [x] DONE: Implement forward pass inference
 - [x] DONE: Port distance2bbox function
-- [ ] Port distance2kps function
-- [ ] Implement NMS (Non-Maximum Suppression)
+- [x] DONE: Port distance2kps function
+- [x] DONE: Implement NMS (Non-Maximum Suppression)
 - [ ] Add face detection visualization
 - [x] DONE: Write unit tests for face detection (test_distance_to_bbox)
 
 ### Week 4: Landmark Detection Module
 - [x] DONE: Create MarkDetector struct
-- [ ] Implement ONNX model loading for face_landmarks.onnx
-- [ ] Port image preprocessing (resize, color conversion)
-- [ ] Implement batch inference support
-- [ ] Convert landmark output format
+- [x] DONE: Implement ONNX model loading for face_landmarks.onnx
+- [x] DONE: Port image preprocessing (resize, color conversion)
+- [x] DONE: Implement batch inference support
+- [x] DONE: Convert landmark output format
 - [ ] Add landmark visualization
 - [ ] Write unit tests for landmark detection
 
@@ -87,41 +87,41 @@
 - [x] DONE: Port statistical calculations
 - [x] DONE: Add movement detection logic
 - [x] DONE: Implement debug statistics
-- [ ] Create utility functions for screen resolution
-- [ ] Add X11 cursor control functions
-- [ ] Implement keyboard state detection
+- [x] DONE: Create utility functions for screen resolution
+- [x] DONE: Add X11 cursor control functions
+- [x] DONE: Implement keyboard state detection
 
 ### Week 9: Video Processing Pipeline
-- [ ] Set up OpenCV VideoCapture
-- [ ] Implement frame reading loop
-- [ ] Add webcam buffer optimization
-- [ ] Implement image flipping/inversion options
-- [ ] Add brightness adjustment
-- [ ] Create frame timing/FPS counter
-- [ ] Implement graceful shutdown
-- [ ] Add video file support
+- [x] DONE: Set up OpenCV VideoCapture
+- [x] DONE: Implement frame reading loop
+- [x] DONE: Add webcam buffer optimization
+- [x] DONE: Implement image flipping/inversion options
+- [x] DONE: Add brightness adjustment
+- [x] DONE: Create frame timing/FPS counter
+- [x] DONE: Implement graceful shutdown
+- [x] DONE: Add video file support
 
 ## Phase 6: Main Application
 
 ### Week 10: Core Application Logic
-- [ ] Implement main application struct
-- [ ] Port argument parsing logic
-- [ ] Create GUI window management
-- [ ] Implement cursor position mapping (angles to pixels)
-- [ ] Implement normal vector projection mode
-- [ ] Add multiple filter visualization mode
-- [ ] Implement GUI mode selection (all/pointers/cam/none)
-- [ ] Add legend and UI text rendering
+- [x] DONE: Implement main application struct
+- [x] DONE: Port argument parsing logic
+- [x] DONE: Create GUI window management
+- [x] DONE: Implement cursor position mapping (angles to pixels)
+- [x] DONE: Implement normal vector projection mode
+- [x] DONE: Add multiple filter visualization mode
+- [x] DONE: Implement GUI mode selection (all/pointers/cam/none)
+- [x] DONE: Add legend and UI text rendering
 
 ### Week 11: Cursor Control Features
-- [ ] Implement absolute cursor control mode
-- [ ] Implement relative cursor control mode
-- [ ] Add 'w' key detection for relative mode
-- [ ] Implement location vector mode
-- [ ] Implement speed vector mode
-- [ ] Create cursor update thread for speed mode
-- [ ] Add movement-based cursor control
-- [ ] Test cursor control on X11
+- [x] DONE: Implement absolute cursor control mode
+- [x] DONE: Implement relative cursor control mode
+- [x] DONE: Add 'w' key detection for relative mode
+- [x] DONE: Implement location vector mode
+- [x] DONE: Implement speed vector mode
+- [x] DONE: Create cursor update thread for speed mode
+- [x] DONE: Add movement-based cursor control
+- [x] DONE: Test cursor control on X11
 
 ## Phase 7: Testing and Optimization
 
@@ -221,13 +221,13 @@ approx = "0.5"
 
 ## Build Requirements
 
-- [ ] Set up shell.nix with Rust toolchain
-- [ ] Add ONNX Runtime to shell.nix
-- [ ] Configure OpenCV in shell.nix
-- [ ] Create justfile with build commands
+- [x] DONE: Set up shell.nix with Rust toolchain
+- [x] DONE: Add ONNX Runtime to shell.nix
+- [x] DONE: Configure OpenCV in shell.nix
+- [x] DONE: Create justfile with build commands
 - [ ] Add development dependencies
 - [ ] Set up pre-commit hooks
-- [ ] Configure rustfmt and clippy
+- [x] DONE: Configure rustfmt and clippy
 
 ## Success Metrics
 
