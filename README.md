@@ -2,6 +2,8 @@
 
 Realtime human head pose estimation with ONNX Runtime and OpenCV.
 
+[![Head Pose Estimation Demo](https://img.youtube.com/vi/y6tSFFUmOgk/0.jpg)](https://www.youtube.com/watch?v=y6tSFFUmOgk)
+
 ![demo](doc/demo.gif)
 ![demo](doc/demo1.gif)
 
