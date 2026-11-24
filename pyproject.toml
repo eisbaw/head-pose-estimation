@@ -17,7 +17,7 @@ dependencies = [
     "onnxruntime==1.17.1",
     "opencv-python>=4.8.0",
     "packaging==23.1",
-    "protobuf==4.23.2",
+    "protobuf==5.29.6",
     "sympy==1.12",
 ]
 
